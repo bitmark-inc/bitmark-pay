@@ -1,0 +1,8 @@
+.classpath
+.project
+.settings
+*.spvchain
+*.wallet
+target
+log
+config

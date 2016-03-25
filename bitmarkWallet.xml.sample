@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<configuration>
+	<wallet>
+		<!--the folder to store the wallet and spvchain file -->
+		<folder>./bitmarkWallet</folder>
+	</wallet>
+	<bitcoin>
+		<peers>
+			<ip port="7002">192.168.23.21</ip>
+			<ip port="7002">192.168.23.22</ip>
+		</peers>
+	</bitcoin>
+</configuration>

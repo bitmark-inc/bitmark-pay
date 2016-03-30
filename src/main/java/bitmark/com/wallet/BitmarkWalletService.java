@@ -4,8 +4,6 @@
 
 package bitmark.com.wallet;
 
-import java.util.ArrayList;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -28,17 +26,19 @@ import bitmark.com.config.BitmarkConfigReader;
 public class BitmarkWalletService {
 	private static final Logger log = LoggerFactory.getLogger(BitmarkWalletService.class);
 	private static WalletAppKit kit;
-
+	private static boolean enableStdin = false;
+	
 	public static void main(String[] args) throws Exception {
 		// create the Options
 		Options options = new Options();
 		options.addOption("h", "help", false, "print this message");
+		options.addOption("s", "stdin", false, "send password through stdin for encrypt, decrypt, pay");
 		options.addOption(Option.builder().longOpt("password").desc("give password for encrypt, decrypt, pay")
 				.hasArg(true).build());
 		options.addOption(Option.builder().longOpt("net").required(true)
-				.desc("the net type the wallet is going to link: local|regtest|testnet").hasArg(true).build());
-		options.addOption(Option.builder().longOpt("config").required(false)
-				.desc("the folder to store the wallet and the spv chain.").hasArg(true).build());
+				.desc("*the net type the wallet is going to link: local|regtest|testnet|livenet").hasArg(true).build());
+		options.addOption(Option.builder().longOpt("config").required(true)
+				.desc("*the config file").hasArg(true).build());
 
 		String net = "";
 		String configFile = "";
@@ -56,13 +56,16 @@ public class BitmarkWalletService {
 			} else {
 				net = line.getOptionValue("net");
 				configFile = line.getOptionValue("config");
+				if (line.hasOption("stdin")) {
+					enableStdin = true;
+				}
 				if (line.getArgs().length > 0) {
 					cmd = Commands.valueOf(line.getArgs()[0].toUpperCase());
 					line.getArgList().remove(0);
 				}
 			}
 		} catch (org.apache.commons.cli.ParseException e) {
-			e.printStackTrace();
+			printHelpMessage(options);
 			return;
 		} catch (java.lang.IndexOutOfBoundsException e) {
 			printHelpMessage(options);
@@ -92,86 +95,87 @@ public class BitmarkWalletService {
 
 		switch (cmd) {
 		case ENCRYPT:
-			consoleMsg = "Set password (>=8):";
-			passwordFromCmd = line.getOptionValue("password");
-			walletIsEncrypted = BitmarkWalletKit.walletIsEncrypted(kit.wallet());
-
-			password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd, walletIsEncrypted, cmd);
+			
+			if(enableStdin){
+				password = BitmarkWalletKit.getStdinPassword();
+			}else{
+				consoleMsg = "Set password (>=8):";
+				passwordFromCmd = line.getOptionValue("password");
+				walletIsEncrypted = BitmarkWalletKit.walletIsEncrypted(kit.wallet());
+				password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd, walletIsEncrypted, cmd);
+			}
+			
 			if (password == null) {
-				System.out.println("Wallet is encrypted");
+				System.err.println("Wallet is encrypted");
 				return;
 			}
 
 			if (password.length() < 8) {
-				System.out.println("Password length should >= 8");
+				System.err.println("Password length should >= 8");
 				return;
 			}
 
 			kit.wallet().encrypt(password);
 			break;
 		case DECRYPT:
-			consoleMsg = "Password:";
-			passwordFromCmd = line.getOptionValue("password");
-			walletIsEncrypted = BitmarkWalletKit.walletIsEncrypted(kit.wallet());
-
-			password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd, walletIsEncrypted, cmd);
+			
+			if(enableStdin){
+				password = BitmarkWalletKit.getStdinPassword();
+			}else{
+				consoleMsg = "Password:";
+				passwordFromCmd = line.getOptionValue("password");
+				walletIsEncrypted = BitmarkWalletKit.walletIsEncrypted(kit.wallet());
+				password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd, walletIsEncrypted, cmd);
+			}
+			
 
 			if (password == null) {
-				System.out.println("Wallet is not encrypt");
+				System.err.println("Wallet is not encrypt");
 				return;
 			}
 
 			if (!kit.wallet().checkPassword(password)) {
-				System.out.println("Wrong password");
+				System.err.println("Wrong password");
 				return;
 			}
 
 			kit.wallet().decrypt(password);
 			break;
 		case PAY:
-			if (line.getArgs().length > 0) {
+			if (line.getArgs().length == 2) {
 				targets = line.getArgs();
 			} else {
-				System.out.println("Please give addresses to pay");
+				System.err.println("Please give txid and addresses");
 				return;
 			}
 
-			consoleMsg = "Password:";
-			passwordFromCmd = line.getOptionValue("password");
-			walletIsEncrypted = BitmarkWalletKit.walletIsEncrypted(kit.wallet());
-
-			password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd, walletIsEncrypted, cmd);
+			if(enableStdin){
+				password = BitmarkWalletKit.getStdinPassword();
+			}else{
+				consoleMsg = "Password:";
+				passwordFromCmd = line.getOptionValue("password");
+				walletIsEncrypted = BitmarkWalletKit.walletIsEncrypted(kit.wallet());				
+				password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd, walletIsEncrypted, cmd);
+			}
+			
 			if (password != null && !kit.wallet().checkPassword(password)) {
-				System.out.println("Wrong password");
+				System.err.println("Wrong password");
 				return;
 			}
 
 			Address changeAddr = BitmarkWalletKit.getAddress(kit.wallet(), kit.params());
-			ArrayList<String> failedAddresses = new ArrayList<>();
-			for (String sendAddress : targets) {
-				Address tmpAddr = null;
-				try {
-					tmpAddr = new Address(kit.params(), sendAddress);
-					if (!BitmarkWalletKit.sendCoins(kit.wallet(), tmpAddr, changeAddr, password)) {
-						failedAddresses.add(sendAddress);
-					}
-				} catch (AddressFormatException e) {
-					System.out.println("Invalid address: " + tmpAddr);
-					failedAddresses.add(sendAddress);
-				}
-
+			String txid = targets[0];
+			if(!BitmarkWalletKit.checkHex(txid)){
+				System.err.println("First parameter is not hex");
+				return;
 			}
-			int failedSize = failedAddresses.size();
-			System.out.printf("%d successed, %d failed\n", targets.length - failedSize, failedSize);
-			if (failedSize != 0) {
-				long needSatoshi = (BitmarkWalletKit.BITMARK_FEE + BitmarkWalletKit.MINE_FEE) * failedSize;
-				System.out.printf("%d Payment failed, you might need %d satoshi and wallet balance is %d\n", failedSize,
-						needSatoshi, kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value);
-				System.out.println("Failed payment address: ");
-				for (String failedAddress : failedAddresses) {
-					System.out.println(failedAddress);
-				}
+			Address paymentAddr = new Address(kit.params(), targets[1]);
+			if(!BitmarkWalletKit.sendCoins(kit.wallet(), txid, paymentAddr, changeAddr, password)){
+				long needSatoshi = BitmarkWalletKit.BITMARK_FEE + BitmarkWalletKit.MINE_FEE;
+				System.err.printf("Payment failed, you might need %d satoshi and wallet balance is %d\n", needSatoshi, kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value);
+				System.err.printf("Failed payment:\ntxid:%s\naddress:%s\n", txid, paymentAddr);
 			}
+			System.out.println("Payment successed.");
 			break;
 		case BALANCE:
 			System.out.println("Wallet estimated satoshi: " + kit.wallet().getBalance(BalanceType.ESTIMATED_SPENDABLE));
@@ -200,12 +204,13 @@ public class BitmarkWalletService {
 
 		log.debug("Balance: " + kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE));
 	}
+	
 
 	private static void printHelpMessage(Options options) {
 		HelpFormatter formatter = new HelpFormatter();
 		System.out.println("bitmarkWalletService [options] <command>");
 		System.out.println("command:");
-		System.out.println(" pay [addresses...]    pay the addresses");
+		System.out.println(" pay txid addresses    pay the addresses");
 		System.out.println(" balance               get wallet balance");
 		System.out.println(" address               get wallet address");
 		System.out.println(" pending-tx            get pending transactions");

@@ -7,9 +7,11 @@ package bitmark.com.wallet;
 import java.io.Console;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetAddress;
+import java.math.BigInteger;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Pattern;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
@@ -33,7 +35,11 @@ import org.slf4j.LoggerFactory;
 import com.google.common.util.concurrent.MoreExecutors;
 
 /**
- * <p>BitmarkWalletKit can create WalletAppKit according to different net setting, and provides functions for BitmarkWalletService.</p>
+ * <p>
+ * BitmarkWalletKit can create WalletAppKit according to different net setting,
+ * and provides functions for BitmarkWalletService.
+ * </p>
+ * 
  * @author yuntai
  *
  */
@@ -41,27 +47,33 @@ public class BitmarkWalletKit {
 	private static final Logger log = LoggerFactory.getLogger(BitmarkWalletKit.class);
 
 	/**
-	 * Fee charged by bitmark, when you issue, transfer your bitmark item. 
+	 * Fee charged by bitmark, when you issue, transfer your bitmark item.
 	 */
 	public static final long BITMARK_FEE = 200000L;
-	
+
 	/**
 	 * Fee charged by other bitcoin peer to mine the transaction
 	 */
 	public static final long MINE_FEE = 5000L;
 
 	private static String bitmarkWalletFileName;
+	private static Pattern hexPattern;
 
 	/**
-	 * <p>Get a bitcoing walletAppKit.</p>
-	 * @param net specify the net for the walletAppKit. @see NetType
+	 * <p>
+	 * Get a bitcoing walletAppKit.
+	 * </p>
+	 * 
+	 * @param net
+	 *            specify the net for the walletAppKit. @see NetType
 	 * @return bitcoinj.WalletAppKit
 	 * @throws IOException
 	 */
-	public static WalletAppKit getWalletKit(NetType net, String walletFolder, List<PeerAddress> peerAddresses) throws IOException {
+	public static WalletAppKit getWalletKit(NetType net, String walletFolder, List<PeerAddress> peerAddresses)
+			throws IOException {
 		NetworkParameters netParams;
 		String filePrefix = "bitmarkWallet";
-		
+
 		bitmarkWalletFileName = filePrefix + "-" + net;
 
 		switch (net) {
@@ -83,8 +95,9 @@ public class BitmarkWalletKit {
 		WalletAppKit kit = new WalletAppKit(netParams, new File(walletFolder), bitmarkWalletFileName);
 		if (net.equals(NetType.LOCAL)) {
 			kit.connectToLocalHost();
-			
-		}else if(peerAddresses != null) { // net is not local and peerAddress is specified
+
+		} else if (peerAddresses != null) { // net is not local and peerAddress
+											// is specified
 			PeerAddress[] arrayPeerAddr = new PeerAddress[peerAddresses.size()];
 			peerAddresses.toArray(arrayPeerAddr);
 			kit.setPeerNodes(arrayPeerAddr);
@@ -95,9 +108,12 @@ public class BitmarkWalletKit {
 
 		return kit;
 	}
-	
+
 	/**
-	 * <p>Set wallet listener.</p>
+	 * <p>
+	 * Set wallet listener.
+	 * </p>
+	 * 
 	 * @param wallet
 	 */
 	public static void setWalletListener(Wallet wallet) {
@@ -137,9 +153,13 @@ public class BitmarkWalletKit {
 
 		});
 	}
-	
+
 	/**
-	 * <p>Get an address for the wallet. Will not refresh the address and always use the same one</p>
+	 * <p>
+	 * Get an address for the wallet. Will not refresh the address and always
+	 * use the same one
+	 * </p>
+	 * 
 	 * @param wallet
 	 * @param netParams
 	 * @return Address
@@ -155,29 +175,35 @@ public class BitmarkWalletKit {
 			address = wallet.getIssuedReceiveAddresses().get(0);
 			log.info("Using existing address " + address);
 		}
-		
+
 		return address;
 	}
 
 	/**
-	 * <p>Send coins (bitmark and mine fee) from this wallet.</p>
+	 * <p>
+	 * Send coins (bitmark and mine fee) from this wallet.
+	 * </p>
+	 * 
 	 * @param wallet
-	 * @param forwardingAddress address will receive the bitmark coins
-	 * @param changeAddress address will receive the changes
-	 * @param password required if the wallet is encrypted
+	 * @param forwardingAddress
+	 *            address will receive the bitmark coins
+	 * @param changeAddress
+	 *            address will receive the changes
+	 * @param password
+	 *            required if the wallet is encrypted
 	 * @return true after the payment has been broadcasted successfully
 	 */
-	public static boolean sendCoins(Wallet wallet, Address forwardingAddress, Address changeAddress, String password) {
+	public static boolean sendCoins(Wallet wallet, String txId, Address forwardingAddress, Address changeAddress,
+			String password) {
 		try {
 			Coin bitmarkFee = Coin.valueOf(BITMARK_FEE);
 			log.info("Sending {} satoshis to {}", BITMARK_FEE, forwardingAddress);
 			SendRequest sendRequest = SendRequest.to(forwardingAddress, bitmarkFee);
 			sendRequest.changeAddress = changeAddress;
+			sendRequest.tx.addOutput(Coin.valueOf(0), generateBitmarkScript(txId));
 			if (password != null) {
-				sendRequest.aesKey = wallet.getKeyCrypter().deriveKey(password);	
+				sendRequest.aesKey = wallet.getKeyCrypter().deriveKey(password);
 			}
-			
-			
 			Wallet.SendResult sendResult = wallet.sendCoins(sendRequest);
 
 			sendResult.broadcastComplete.addListener(new Runnable() {
@@ -185,8 +211,10 @@ public class BitmarkWalletKit {
 					log.info("Sent to {} success! Transaction hash: {}", forwardingAddress,
 							sendResult.tx.getHashAsString());
 					log.info("Change address: " + sendRequest.changeAddress);
-					log.info("Wallet balance (estimated satoshi): {}", wallet.getBalance(BalanceType.ESTIMATED_SPENDABLE));
-					log.info("Wallet balance (available satoshi): {}", wallet.getBalance(BalanceType.AVAILABLE_SPENDABLE));
+					log.info("Wallet balance (estimated satoshi): {}",
+							wallet.getBalance(BalanceType.ESTIMATED_SPENDABLE));
+					log.info("Wallet balance (available satoshi): {}",
+							wallet.getBalance(BalanceType.AVAILABLE_SPENDABLE));
 				}
 			}, MoreExecutors.sameThreadExecutor());
 
@@ -206,29 +234,57 @@ public class BitmarkWalletKit {
 		}
 	}
 
+	private static Script generateBitmarkScript(String txId) {
+		if (!checkHex(txId)) {
+			log.error("Txid is not hex string: {}", txId);
+			return null;
+		}
+		int countTxId = txId.length() / 2;
+		String scriptStr = "6a" + Integer.toHexString(countTxId) + txId;
+		byte[] bytes = new BigInteger(scriptStr,16).toByteArray();
+		return new Script(bytes);
+	}
+
+	public static boolean checkHex(String str) {
+		if (hexPattern == null) {
+			hexPattern = Pattern.compile("[0-9a-fA-F]+");
+		}
+		return hexPattern.matcher(str).matches();
+	}
+
 	/**
-	 * <p>The prefix file name for the wallet and block chain</p>
-	 * @return prefix name 
+	 * <p>
+	 * The prefix file name for the wallet and block chain
+	 * </p>
+	 * 
+	 * @return prefix name
 	 */
 	public static String getBitmarkWalletFileName() {
 		return bitmarkWalletFileName;
 	}
 
 	/**
-	 * <p>Check if the wallet is encrypted.</p> 
+	 * <p>
+	 * Check if the wallet is encrypted.
+	 * </p>
+	 * 
 	 * @param wallet
 	 * @return true if encrypted
 	 */
-	public static boolean walletIsEncrypted(Wallet wallet){
+	public static boolean walletIsEncrypted(Wallet wallet) {
 		return wallet.isEncrypted();
 	}
-	
+
 	/**
-	 * <p>Create a system console to let the user type password.</p>
-	 * @param msg Message would like to show in the console
+	 * <p>
+	 * Create a system console to let the user type password.
+	 * </p>
+	 * 
+	 * @param msg
+	 *            Message would like to show in the console
 	 * @return password string
 	 */
-	public static String getPasswordConsole(String msg){
+	public static String getPasswordConsole(String msg) {
 		Console console = System.console();
 		if (console == null) {
 			System.out.println("Couldn't get Console instance");
@@ -237,31 +293,37 @@ public class BitmarkWalletKit {
 		char passwordArray[] = console.readPassword(msg);
 		return String.valueOf(passwordArray);
 	}
-	
+
 	/**
-	 * <p>Interface for getting password. 
-	 * If the wallet is encrypted, and command is decrypt or pay, 
-	 * and if the password is null, will prompt system console for user.
-	 * If the wallet is not encrypted, command is encrypt and the password is null, prompt system console for user.
+	 * <p>
+	 * Interface for getting password. If the wallet is encrypted, and command
+	 * is decrypt or pay, and if the password is null, will prompt system
+	 * console for user. If the wallet is not encrypted, command is encrypt and
+	 * the password is null, prompt system console for user.
 	 * </p>
+	 * 
 	 * @param consoleMsg
 	 * @param password
 	 * @param walletIsEncrypt
 	 * @param cmd
 	 * @return
 	 */
-	public static String getPassword(String consoleMsg, String password, boolean walletIsEncrypt, Commands cmd){
+	public static String getPassword(String consoleMsg, String password, boolean walletIsEncrypt, Commands cmd) {
 		if (walletIsEncrypt && cmd.equals(Commands.ENCRYPT)) {
 			return null;
 		}
 		if (!walletIsEncrypt && (cmd.equals(Commands.DECRYPT) || cmd.equals(Commands.PAY))) {
 			return null;
 		}
-		
+
 		if (password != null) {
 			return password;
 		}
 		return getPasswordConsole(consoleMsg);
-		
+
+	}
+	
+	public static String getStdinPassword(){
+		 return new Scanner(System.in).nextLine();
 	}
 }

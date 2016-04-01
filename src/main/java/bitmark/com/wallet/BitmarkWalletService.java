@@ -19,7 +19,10 @@ import org.slf4j.LoggerFactory;
 import bitmark.com.config.BitmarkConfigReader;
 
 /**
- * <p>Provide command line service for BitmarkWalletKit.</p>
+ * <p>
+ * Provide command line service for BitmarkWalletKit.
+ * </p>
+ * 
  * @author yuntai
  *
  */
@@ -27,7 +30,7 @@ public class BitmarkWalletService {
 	private static final Logger log = LoggerFactory.getLogger(BitmarkWalletService.class);
 	private static WalletAppKit kit;
 	private static boolean enableStdin = false;
-	
+
 	public static void main(String[] args) throws Exception {
 		// create the Options
 		Options options = new Options();
@@ -37,8 +40,8 @@ public class BitmarkWalletService {
 				.hasArg(true).build());
 		options.addOption(Option.builder().longOpt("net").required(true)
 				.desc("*the net type the wallet is going to link: local|regtest|testnet|livenet").hasArg(true).build());
-		options.addOption(Option.builder().longOpt("config").required(true)
-				.desc("*the config file").hasArg(true).build());
+		options.addOption(
+				Option.builder().longOpt("config").required(true).desc("*the config file").hasArg(true).build());
 
 		String net = "";
 		String configFile = "";
@@ -90,24 +93,26 @@ public class BitmarkWalletService {
 
 		String consoleMsg;
 		String passwordFromCmd;
-		boolean walletIsEncrypted;
 		String password = null;
 
 		switch (cmd) {
 		case ENCRYPT:
-			
-			if(enableStdin){
-				password = BitmarkWalletKit.getStdinPassword();
-			}else{
-				consoleMsg = "Set password (>=8):";
-				passwordFromCmd = line.getOptionValue("password");
-				walletIsEncrypted = BitmarkWalletKit.walletIsEncrypted(kit.wallet());
-				password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd, walletIsEncrypted, cmd);
-			}
-			
-			if (password == null) {
+			if (BitmarkWalletKit.walletIsEncrypted(kit.wallet())) {
 				System.err.println("Wallet is encrypted");
 				return;
+			}
+
+			String verifyPassword;
+			if (enableStdin) {
+				password = BitmarkWalletKit.getStdinPassword();
+				verifyPassword = BitmarkWalletKit.getStdinPassword();
+			} else {
+				consoleMsg = "Set password (>=8):";
+				passwordFromCmd = line.getOptionValue("password");
+				password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd);
+
+				consoleMsg = "Verify password:";
+				verifyPassword = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd);
 			}
 
 			if (password.length() < 8) {
@@ -115,23 +120,25 @@ public class BitmarkWalletService {
 				return;
 			}
 
+			if (!password.equals(verifyPassword)) {
+				System.err.println("Verify wallet password failed");
+				return;
+			}
+
 			kit.wallet().encrypt(password);
 			break;
 		case DECRYPT:
-			
-			if(enableStdin){
+			if (!BitmarkWalletKit.walletIsEncrypted(kit.wallet())) {
+				System.err.println("Wallet is not encrypted");
+				return;
+			}
+
+			if (enableStdin) {
 				password = BitmarkWalletKit.getStdinPassword();
-			}else{
+			} else {
 				consoleMsg = "Password:";
 				passwordFromCmd = line.getOptionValue("password");
-				walletIsEncrypted = BitmarkWalletKit.walletIsEncrypted(kit.wallet());
-				password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd, walletIsEncrypted, cmd);
-			}
-			
-
-			if (password == null) {
-				System.err.println("Wallet is not encrypt");
-				return;
+				password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd);
 			}
 
 			if (!kit.wallet().checkPassword(password)) {
@@ -149,30 +156,33 @@ public class BitmarkWalletService {
 				return;
 			}
 
-			if(enableStdin){
-				password = BitmarkWalletKit.getStdinPassword();
-			}else{
-				consoleMsg = "Password:";
-				passwordFromCmd = line.getOptionValue("password");
-				walletIsEncrypted = BitmarkWalletKit.walletIsEncrypted(kit.wallet());				
-				password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd, walletIsEncrypted, cmd);
-			}
-			
-			if (password != null && !kit.wallet().checkPassword(password)) {
-				System.err.println("Wrong password");
-				return;
+			// get password if wallet is encrypted and check it
+			if (BitmarkWalletKit.walletIsEncrypted(kit.wallet())) {
+				if (enableStdin) {
+					password = BitmarkWalletKit.getStdinPassword();
+				} else {
+					consoleMsg = "Password:";
+					passwordFromCmd = line.getOptionValue("password");
+					password = BitmarkWalletKit.getPassword(consoleMsg, passwordFromCmd);
+				}
+
+				if (!kit.wallet().checkPassword(password)) {
+					System.err.println("Wrong password");
+					return;
+				}
 			}
 
 			Address changeAddr = BitmarkWalletKit.getAddress(kit.wallet(), kit.params());
 			String txid = targets[0];
-			if(!BitmarkWalletKit.checkHex(txid)){
+			if (!BitmarkWalletKit.checkHex(txid)) {
 				System.err.println("First parameter is not hex");
 				return;
 			}
 			Address paymentAddr = new Address(kit.params(), targets[1]);
-			if(!BitmarkWalletKit.sendCoins(kit.wallet(), txid, paymentAddr, changeAddr, password)){
+			if (!BitmarkWalletKit.sendCoins(kit.wallet(), txid, paymentAddr, changeAddr, password)) {
 				long needSatoshi = BitmarkWalletKit.BITMARK_FEE + BitmarkWalletKit.MINE_FEE;
-				System.err.printf("Payment failed, you might need %d satoshi and wallet balance is %d\n", needSatoshi, kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value);
+				System.err.printf("Payment failed, you might need %d satoshi and wallet balance is %d\n", needSatoshi,
+						kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value);
 				System.err.printf("Failed payment:\ntxid:%s\naddress:%s\n", txid, paymentAddr);
 			}
 			System.out.println("Payment successed.");
@@ -204,7 +214,6 @@ public class BitmarkWalletService {
 
 		log.debug("Balance: " + kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE));
 	}
-	
 
 	private static void printHelpMessage(Options options) {
 		HelpFormatter formatter = new HelpFormatter();

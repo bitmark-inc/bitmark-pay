@@ -59,6 +59,8 @@ public class BitmarkWalletKit {
 	private static String bitmarkWalletFileName;
 	private static Pattern hexPattern;
 
+	private static Scanner scanner;
+
 	/**
 	 * <p>
 	 * Get a bitcoing walletAppKit.
@@ -293,37 +295,19 @@ public class BitmarkWalletKit {
 		char passwordArray[] = console.readPassword(msg);
 		return String.valueOf(passwordArray);
 	}
-
-	/**
-	 * <p>
-	 * Interface for getting password. If the wallet is encrypted, and command
-	 * is decrypt or pay, and if the password is null, will prompt system
-	 * console for user. If the wallet is not encrypted, command is encrypt and
-	 * the password is null, prompt system console for user.
-	 * </p>
-	 * 
-	 * @param consoleMsg
-	 * @param password
-	 * @param walletIsEncrypt
-	 * @param cmd
-	 * @return
-	 */
-	public static String getPassword(String consoleMsg, String password, boolean walletIsEncrypt, Commands cmd) {
-		if (walletIsEncrypt && cmd.equals(Commands.ENCRYPT)) {
-			return null;
-		}
-		if (!walletIsEncrypt && (cmd.equals(Commands.DECRYPT) || cmd.equals(Commands.PAY))) {
-			return null;
-		}
-
+	
+	public static String getPassword(String consoleMsg, String password) {
 		if (password != null) {
 			return password;
 		}
 		return getPasswordConsole(consoleMsg);
-
 	}
+
 	
 	public static String getStdinPassword(){
-		 return new Scanner(System.in).nextLine();
+		if (scanner == null) {
+			scanner = new Scanner(System.in);
+		}
+		return scanner.nextLine();
 	}
 }

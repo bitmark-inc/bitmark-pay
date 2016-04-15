@@ -97,9 +97,9 @@ public class BitmarkWalletKit {
 		WalletAppKit kit = new WalletAppKit(netParams, new File(walletFolder), bitmarkWalletFileName);
 		if (net.equals(NetType.LOCAL)) {
 			kit.connectToLocalHost();
-
-		} else if (peerAddresses != null) { // net is not local and peerAddress
-											// is specified
+		} 
+		
+		if (peerAddresses != null) { // peerAddress is specified
 			PeerAddress[] arrayPeerAddr = new PeerAddress[peerAddresses.size()];
 			peerAddresses.toArray(arrayPeerAddr);
 			kit.setPeerNodes(arrayPeerAddr);
@@ -190,7 +190,7 @@ public class BitmarkWalletKit {
 	 * @param forwardingAddress
 	 *            address will receive the bitmark coins
 	 * @param changeAddress
-	 *            address will receive the changes
+	 *            address will receive the changes. Set null to send to new address from the wallet
 	 * @param password
 	 *            required if the wallet is encrypted
 	 * @return true after the payment has been broadcasted successfully
@@ -201,8 +201,11 @@ public class BitmarkWalletKit {
 			Coin bitmarkFee = Coin.valueOf(BITMARK_FEE);
 			log.info("Sending {} satoshis to {}", BITMARK_FEE, forwardingAddress);
 			SendRequest sendRequest = SendRequest.to(forwardingAddress, bitmarkFee);
-			sendRequest.changeAddress = changeAddress;
 			sendRequest.tx.addOutput(Coin.valueOf(0), generateBitmarkScript(txId));
+			if (changeAddress != null) {
+				sendRequest.changeAddress = changeAddress;
+			}
+
 			if (password != null) {
 				sendRequest.aesKey = wallet.getKeyCrypter().deriveKey(password);
 			}

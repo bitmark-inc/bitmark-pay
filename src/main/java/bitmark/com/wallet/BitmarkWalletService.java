@@ -172,14 +172,13 @@ public class BitmarkWalletService {
 				}
 			}
 
-			Address changeAddr = BitmarkWalletKit.getAddress(kit.wallet(), kit.params());
 			String txid = targets[0];
 			if (!BitmarkWalletKit.checkHex(txid)) {
 				System.err.println("First parameter is not hex");
 				return;
 			}
 			Address paymentAddr = new Address(kit.params(), targets[1]);
-			if (!BitmarkWalletKit.sendCoins(kit.wallet(), txid, paymentAddr, changeAddr, password)) {
+			if (!BitmarkWalletKit.sendCoins(kit.wallet(), txid, paymentAddr, null, password)) {
 				long needSatoshi = BitmarkWalletKit.BITMARK_FEE + BitmarkWalletKit.MINE_FEE;
 				System.err.printf("Payment failed, you might need %d satoshi and wallet balance is %d\n", needSatoshi,
 						kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value);

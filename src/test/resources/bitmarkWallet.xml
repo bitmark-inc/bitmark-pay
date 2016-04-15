@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<configuration>
+	<wallet>
+		<folder>./wallet</folder>
+	</wallet>
+	<bitcoin>
+		<peers>
+			<ip port="17002">127.0.0.1</ip>
+			<ip port="18444">172.16.20.24</ip>
+		</peers>
+	</bitcoin>
+</configuration>

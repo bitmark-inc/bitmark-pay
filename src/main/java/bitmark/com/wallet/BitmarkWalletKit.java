@@ -27,6 +27,7 @@ import org.bitcoinj.core.WalletEventListener;
 import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.MainNetParams;
+import org.bitcoinj.params.RegTestParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.Script;
 import org.slf4j.Logger;
@@ -56,8 +57,8 @@ public class BitmarkWalletKit {
 	 */
 	public static final long MINE_FEE = 5000L;
 
-	private static String bitmarkWalletFileName;
-	private static Pattern hexPattern;
+	private String bitmarkWalletFileName;
+	private Pattern hexPattern;
 
 	private static Scanner scanner;
 	
@@ -90,7 +91,7 @@ public class BitmarkWalletKit {
 			netParams = BitmarkRegTestParams.get();
 			break;
 		case LOCAL:
-			netParams = BitmarkRegTestParams.get();
+			netParams = RegTestParams.get();
 			break;
 		default:
 			throw new IOException("Invalid net: "+net);

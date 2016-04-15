@@ -60,18 +60,20 @@ public class BitmarkWalletKit {
 	private static Pattern hexPattern;
 
 	private static Scanner scanner;
-
+	
+	private WalletAppKit walletAppkit = null;
+	
+	
 	/**
 	 * <p>
-	 * Get a bitcoing walletAppKit.
+	 * Set a bitcoinj walletAppKit.
 	 * </p>
 	 * 
 	 * @param net
 	 *            specify the net for the walletAppKit. @see NetType
-	 * @return bitcoinj.WalletAppKit
 	 * @throws IOException
 	 */
-	public static WalletAppKit getWalletKit(NetType net, String walletFolder, List<PeerAddress> peerAddresses)
+	public BitmarkWalletKit(NetType net, String walletFolder, List<PeerAddress> peerAddresses)
 			throws IOException {
 		NetworkParameters netParams;
 		String filePrefix = "bitmarkWallet";
@@ -91,25 +93,27 @@ public class BitmarkWalletKit {
 			netParams = BitmarkRegTestParams.get();
 			break;
 		default:
-			return null;
+			throw new IOException("Invalid net: "+net);
 		}
 
-		WalletAppKit kit = new WalletAppKit(netParams, new File(walletFolder), bitmarkWalletFileName);
+		walletAppkit = new WalletAppKit(netParams, new File(walletFolder), bitmarkWalletFileName);
 		if (net.equals(NetType.LOCAL)) {
-			kit.connectToLocalHost();
+			walletAppkit.connectToLocalHost();
 		} 
 		
 		if (peerAddresses != null) { // peerAddress is specified
 			PeerAddress[] arrayPeerAddr = new PeerAddress[peerAddresses.size()];
 			peerAddresses.toArray(arrayPeerAddr);
-			kit.setPeerNodes(arrayPeerAddr);
+			walletAppkit.setPeerNodes(arrayPeerAddr);
 		}
 
 		// Set the default fee
 		SendRequest.DEFAULT_FEE_PER_KB = Coin.valueOf(MINE_FEE);
-
-		return kit;
 	}
+	
+	public WalletAppKit getWalletAppkit(){
+		return walletAppkit;
+	} 
 
 	/**
 	 * <p>
@@ -118,7 +122,8 @@ public class BitmarkWalletKit {
 	 * 
 	 * @param wallet
 	 */
-	public static void setWalletListener(Wallet wallet) {
+	public void setWalletListener() {
+		Wallet wallet = walletAppkit.wallet();
 		wallet.addEventListener(new WalletEventListener() {
 
 			public void onKeysAdded(List<ECKey> keys) {
@@ -168,7 +173,9 @@ public class BitmarkWalletKit {
 	 * @throws IOException
 	 */
 
-	public static Address getAddress(Wallet wallet, NetworkParameters netParams) throws IOException {
+	public Address getAddress() throws IOException {
+		Wallet wallet = walletAppkit.wallet(); 
+		NetworkParameters netParams = walletAppkit.params();
 		Address address;
 		if (wallet.getIssuedReceiveAddresses().size() < 1) {
 			address = wallet.currentReceiveKey().toAddress(netParams);
@@ -186,7 +193,7 @@ public class BitmarkWalletKit {
 	 * Send coins (bitmark and mine fee) from this wallet.
 	 * </p>
 	 * 
-	 * @param wallet
+	 * @param txid bitmark transaction ID to pay
 	 * @param forwardingAddress
 	 *            address will receive the bitmark coins
 	 * @param changeAddress
@@ -195,8 +202,9 @@ public class BitmarkWalletKit {
 	 *            required if the wallet is encrypted
 	 * @return true after the payment has been broadcasted successfully
 	 */
-	public static boolean sendCoins(Wallet wallet, String txId, Address forwardingAddress, Address changeAddress,
+	public boolean sendCoins(String txId, Address forwardingAddress, Address changeAddress,
 			String password) {
+		Wallet wallet = walletAppkit.wallet();
 		try {
 			Coin bitmarkFee = Coin.valueOf(BITMARK_FEE);
 			log.info("Sending {} satoshis to {}", BITMARK_FEE, forwardingAddress);
@@ -239,7 +247,7 @@ public class BitmarkWalletKit {
 		}
 	}
 
-	private static Script generateBitmarkScript(String txId) {
+	private Script generateBitmarkScript(String txId) {
 		if (!checkHex(txId)) {
 			log.error("Txid is not hex string: {}", txId);
 			return null;
@@ -250,7 +258,7 @@ public class BitmarkWalletKit {
 		return new Script(bytes);
 	}
 
-	public static boolean checkHex(String str) {
+	public boolean checkHex(String str) {
 		if (hexPattern == null) {
 			hexPattern = Pattern.compile("[0-9a-fA-F]+");
 		}
@@ -264,7 +272,7 @@ public class BitmarkWalletKit {
 	 * 
 	 * @return prefix name
 	 */
-	public static String getBitmarkWalletFileName() {
+	public String getBitmarkWalletFileName() {
 		return bitmarkWalletFileName;
 	}
 
@@ -276,8 +284,8 @@ public class BitmarkWalletKit {
 	 * @param wallet
 	 * @return true if encrypted
 	 */
-	public static boolean walletIsEncrypted(Wallet wallet) {
-		return wallet.isEncrypted();
+	public boolean walletIsEncrypted() {
+		return walletAppkit.wallet().isEncrypted();
 	}
 
 	/**

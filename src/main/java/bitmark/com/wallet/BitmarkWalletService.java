@@ -28,7 +28,6 @@ import bitmark.com.config.BitmarkConfigReader;
  */
 public class BitmarkWalletService {
 	private static final Logger log = LoggerFactory.getLogger(BitmarkWalletService.class);
-	private static WalletAppKit kit;
 	private static boolean enableStdin = false;
 
 	public static void main(String[] args) throws Exception {
@@ -79,16 +78,17 @@ public class BitmarkWalletService {
 		configs.getBitcoinPeers();
 		// prepare the Wallet
 		NetType netType = NetType.valueOf(net.toUpperCase());
-		kit = BitmarkWalletKit.getWalletKit(netType, configs.getWalletFolder(), configs.getBitcoinPeers());
-		if (kit == null) {
-			System.err.println("Unrecognize net type: " + net);
+		BitmarkWalletKit bitmarkWalletKit = new BitmarkWalletKit(netType, configs.getWalletFolder(), configs.getBitcoinPeers());
+		WalletAppKit kit = bitmarkWalletKit.getWalletAppkit();
+		if ( kit == null ) {
+			log.error("walletappkit is null!");
 			return;
 		}
-
+		
 		kit.startAsync();
 		kit.awaitRunning();
 
-		log.info("{} balance: {}", BitmarkWalletKit.getBitmarkWalletFileName(),
+		log.info("{} balance: {}", bitmarkWalletKit.getBitmarkWalletFileName(),
 				kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE));
 
 		String consoleMsg;
@@ -97,7 +97,7 @@ public class BitmarkWalletService {
 
 		switch (cmd) {
 		case ENCRYPT:
-			if (BitmarkWalletKit.walletIsEncrypted(kit.wallet())) {
+			if (bitmarkWalletKit.walletIsEncrypted()) {
 				System.err.println("Wallet is encrypted");
 				return;
 			}
@@ -128,7 +128,7 @@ public class BitmarkWalletService {
 			kit.wallet().encrypt(password);
 			break;
 		case DECRYPT:
-			if (!BitmarkWalletKit.walletIsEncrypted(kit.wallet())) {
+			if (!bitmarkWalletKit.walletIsEncrypted()) {
 				System.err.println("Wallet is not encrypted");
 				return;
 			}
@@ -157,7 +157,7 @@ public class BitmarkWalletService {
 			}
 
 			// get password if wallet is encrypted and check it
-			if (BitmarkWalletKit.walletIsEncrypted(kit.wallet())) {
+			if (bitmarkWalletKit.walletIsEncrypted()) {
 				if (enableStdin) {
 					password = BitmarkWalletKit.getStdinPassword();
 				} else {
@@ -173,12 +173,12 @@ public class BitmarkWalletService {
 			}
 
 			String txid = targets[0];
-			if (!BitmarkWalletKit.checkHex(txid)) {
+			if (!bitmarkWalletKit.checkHex(txid)) {
 				System.err.println("First parameter is not hex");
 				return;
 			}
 			Address paymentAddr = new Address(kit.params(), targets[1]);
-			if (!BitmarkWalletKit.sendCoins(kit.wallet(), txid, paymentAddr, null, password)) {
+			if (!bitmarkWalletKit.sendCoins(txid, paymentAddr, null, password)) {
 				long needSatoshi = BitmarkWalletKit.BITMARK_FEE + BitmarkWalletKit.MINE_FEE;
 				System.err.printf("Payment failed, you might need %d satoshi and wallet balance is %d\n", needSatoshi,
 						kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value);
@@ -191,7 +191,7 @@ public class BitmarkWalletService {
 			System.out.println("Wallet available satoshi: " + kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE));
 			break;
 		case ADDRESS:
-			System.out.println("Wallet watched address: " + BitmarkWalletKit.getAddress(kit.wallet(), kit.params()));
+			System.out.println("Wallet watched address: " + bitmarkWalletKit.getAddress());
 			break;
 		case PENDING_TX:
 			if (kit.wallet().getPendingTransactions().size() == 0) {
@@ -207,7 +207,7 @@ public class BitmarkWalletService {
 			return;
 		}
 
-		if (!BitmarkWalletKit.walletIsEncrypted(kit.wallet())) {
+		if (!bitmarkWalletKit.walletIsEncrypted()) {
 			System.out.println("NOTE: Please run encrypt to protect your wallet");
 		}
 

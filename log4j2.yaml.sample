@@ -1,0 +1,31 @@
+---
+configuration:
+  properties:
+    property:
+      name: rollingFileName
+      value: bitmark-pay/log/bitmarkWallet.log
+      
+  appenders:       
+    Console:
+      name: STDOUT
+      PatternLayout:
+        pattern: "%highlight{%d{yyyy-MM-dd'T'HH:mm:ssZ} %p %c [%t] %m%n}{FATAL=red, ERROR=red, WARN=blue, INFO=green, DEBUG=white, TRACE=blue}"
+
+    RollingRandomAccessFile:
+      name: RollingFiles
+      fileName: "${rollingFileName}"
+      filePattern: "log/bitmarkWallet-%i.log"
+      Policies:
+        SizeBasedTriggeringPolicy:
+            size: "10 MB"
+      PatternLayout:
+        pattern: "%d{yyyy-MM-dd'T'HH:mm:ssZ} %p %c [%t] %m%n"
+      DefaultRolloverStrategy: 
+        max: 20
+      
+  loggers:
+    root:
+      level: info
+      AppenderRef:
+       - ref: RollingFiles
+  

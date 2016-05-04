@@ -4,6 +4,8 @@
 
 package bitmark.com.wallet;
 
+import java.io.File;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -54,9 +56,12 @@ public class BitmarkWalletService {
 				.desc("*the net type the wallet is going to link: local|regtest|testnet|livenet").hasArg(true).build());
 		options.addOption(
 				Option.builder().longOpt("config").required(true).desc("*the config file").hasArg(true).build());
+		options.addOption(
+				Option.builder().longOpt("log-config").required(false).desc("*the log4j config file").hasArg(true).build());
 
 		String net = "";
 		String configFile = "";
+		String logConfigFile = "";
 		Commands cmd = null;
 		String[] targets = null;
 		CommandLine line;
@@ -71,6 +76,7 @@ public class BitmarkWalletService {
 			} else {
 				net = line.getOptionValue("net");
 				configFile = line.getOptionValue("config");
+				logConfigFile = line.getOptionValue("log-config");
 				if (line.hasOption("stdin")) {
 					enableStdin = true;
 				}
@@ -90,11 +96,16 @@ public class BitmarkWalletService {
 		BitmarkConfigReader configs = new BitmarkConfigReader(configFile);
 		String walletDirectory = configs.getDataDirectory()+"/wallet";
 		String logDirectory = configs.getDataDirectory()+"/log";
-		System.out.println("logDirectory in main: "+logDirectory);
 		
 		// start log
-		System.out.println("Start logging...");
-		configure(logDirectory);
+		if (logConfigFile == "") {
+			configure(logDirectory);
+		}else{
+			LoggerContext context = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
+			File file = new File(logConfigFile);
+			context.setConfigLocation(file.toURI());
+		}
+		log.info("start logging..");
 		
 		// prepare the Wallet
 		NetType netType = NetType.valueOf(net.toUpperCase());
@@ -232,6 +243,7 @@ public class BitmarkWalletService {
 		}
 
 		log.debug("Balance: " + kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE));
+		log.info("stop logging..");
 	}
 
 	private static void printHelpMessage(Options options) {
@@ -248,8 +260,8 @@ public class BitmarkWalletService {
 	}
 	
 	public static void configure(String logDirecotry) {
-		LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        AbstractConfiguration config = (AbstractConfiguration) ctx.getConfiguration();
+		LoggerContext context = (LoggerContext) LogManager.getContext(false);
+        AbstractConfiguration config = (AbstractConfiguration) context.getConfiguration();
         
 		final String fileName = "/bitmarkWallet.log";
 		final String filePattern = "/bitmarkWallet-%i.log";
@@ -270,7 +282,7 @@ public class BitmarkWalletService {
         LoggerConfig loggerConfig = LoggerConfig.createLogger("false", Level.INFO, LogManager.ROOT_LOGGER_NAME, "true", refs, null, config, null);
         loggerConfig.addAppender(fileAppender, null, null);
         config.addLogger(LogManager.ROOT_LOGGER_NAME, loggerConfig);
-        ctx.updateLoggers();
+        context.updateLoggers();
     }
 
 }

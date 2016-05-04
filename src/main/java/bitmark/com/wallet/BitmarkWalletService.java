@@ -21,6 +21,7 @@ import org.apache.logging.log4j.core.appender.rolling.RollingRandomAccessFileMan
 import org.apache.logging.log4j.core.appender.rolling.SizeBasedTriggeringPolicy;
 import org.apache.logging.log4j.core.config.AbstractConfiguration;
 import org.apache.logging.log4j.core.config.AppenderRef;
+import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.bitcoinj.core.*;
@@ -30,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import bitmark.com.config.BitmarkConfigReader;
-
 
 /**
  * <p>
@@ -45,7 +45,7 @@ public class BitmarkWalletService {
 	private static boolean enableStdin = false;
 
 	public static void main(String[] args) throws Exception {
-		 
+
 		// create the Options
 		Options options = new Options();
 		options.addOption("h", "help", false, "print this message");
@@ -56,8 +56,8 @@ public class BitmarkWalletService {
 				.desc("*the net type the wallet is going to link: local|regtest|testnet|livenet").hasArg(true).build());
 		options.addOption(
 				Option.builder().longOpt("config").required(true).desc("*the config file").hasArg(true).build());
-		options.addOption(
-				Option.builder().longOpt("log-config").required(false).desc("*the log4j config file").hasArg(true).build());
+		options.addOption(Option.builder().longOpt("log-config").required(false).desc("the log4j config file")
+				.hasArg(true).build());
 
 		String net = "";
 		String configFile = "";
@@ -94,28 +94,29 @@ public class BitmarkWalletService {
 		}
 
 		BitmarkConfigReader configs = new BitmarkConfigReader(configFile);
-		String walletDirectory = configs.getDataDirectory()+"/wallet";
-		String logDirectory = configs.getDataDirectory()+"/log";
-		
+		String walletDirectory = configs.getDataDirectory() + "/wallet";
+		String logDirectory = configs.getDataDirectory() + "/log";
+
 		// start log
-		if (logConfigFile == "") {
+
+		if (logConfigFile == "" || logConfigFile == null) {
 			configure(logDirectory);
-		}else{
-			LoggerContext context = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
+		} else {
 			File file = new File(logConfigFile);
+			LoggerContext context = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
 			context.setConfigLocation(file.toURI());
 		}
 		log.info("start logging..");
-		
+
 		// prepare the Wallet
 		NetType netType = NetType.valueOf(net.toUpperCase());
 		BitmarkWalletKit bitmarkWalletKit = new BitmarkWalletKit(netType, walletDirectory, configs.getBitcoinPeers());
 		WalletAppKit kit = bitmarkWalletKit.getWalletAppkit();
-		if ( kit == null ) {
+		if (kit == null) {
 			log.error("walletappkit is null!");
 			return;
 		}
-		
+
 		kit.startAsync();
 		kit.awaitRunning();
 
@@ -258,31 +259,35 @@ public class BitmarkWalletService {
 		formatter.printHelp(" ", options, false);
 
 	}
-	
+
 	public static void configure(String logDirecotry) {
-		LoggerContext context = (LoggerContext) LogManager.getContext(false);
-        AbstractConfiguration config = (AbstractConfiguration) context.getConfiguration();
-        
+
+		LoggerContext context = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
+		Configuration config = (AbstractConfiguration) context.getConfiguration();
+
 		final String fileName = "/bitmarkWallet.log";
 		final String filePattern = "/bitmarkWallet-%i.log";
 		final String pattern = "%d{yyyy-MM-dd'T'HH:mm:ssZ} %p %c [%t] %m%n";
-		
-		SizeBasedTriggeringPolicy policy = SizeBasedTriggeringPolicy.createPolicy("10 MB"); 
-		DefaultRolloverStrategy strategy = DefaultRolloverStrategy.createStrategy("20", "0", "max", 
-				"0", null, true, config);
-		PatternLayout layout = PatternLayout.createLayout(pattern, null, 
-				config, null, null, true, false, "", "");
-        
-        RollingRandomAccessFileAppender fileAppender = RollingRandomAccessFileAppender.createAppender(logDirecotry+fileName, logDirecotry+filePattern,
-        		"true", "RollingFiles", "true", String.valueOf(RollingRandomAccessFileManager.DEFAULT_BUFFER_SIZE), policy, strategy, layout, null, "true", "true", "", config); 
-        
-        fileAppender.start();
-        config.addAppender(fileAppender);
-        AppenderRef[] refs = new AppenderRef[] { AppenderRef.createAppenderRef(fileAppender.getName(), null, null) };
-        LoggerConfig loggerConfig = LoggerConfig.createLogger("false", Level.INFO, LogManager.ROOT_LOGGER_NAME, "true", refs, null, config, null);
-        loggerConfig.addAppender(fileAppender, null, null);
-        config.addLogger(LogManager.ROOT_LOGGER_NAME, loggerConfig);
-        context.updateLoggers();
-    }
+
+		SizeBasedTriggeringPolicy policy = SizeBasedTriggeringPolicy.createPolicy("10 MB");
+		DefaultRolloverStrategy strategy = DefaultRolloverStrategy.createStrategy("20", "1", "max", "0", null, true,
+				config);
+		PatternLayout layout = PatternLayout.createLayout(pattern, null, config, null, null, true, false, "", "");
+
+		RollingRandomAccessFileAppender fileAppender = RollingRandomAccessFileAppender.createAppender(
+				logDirecotry + fileName, logDirecotry + filePattern, "true", "RollingFiles", "true",
+				String.valueOf(RollingRandomAccessFileManager.DEFAULT_BUFFER_SIZE), policy, strategy, layout, null,
+				"true", "true", "", config);
+		fileAppender.start();
+		config.addAppender(fileAppender);
+
+		AppenderRef[] refs = new AppenderRef[] { AppenderRef.createAppenderRef(fileAppender.getName(), null, null) };
+		LoggerConfig loggerConfig = LoggerConfig.createLogger("false", Level.INFO, LogManager.ROOT_LOGGER_NAME, "true",
+				refs, null, config, null);
+		loggerConfig.addAppender(fileAppender, null, null);
+		config.addLogger(LogManager.ROOT_LOGGER_NAME, loggerConfig);
+		context.updateLoggers();
+
+	}
 
 }

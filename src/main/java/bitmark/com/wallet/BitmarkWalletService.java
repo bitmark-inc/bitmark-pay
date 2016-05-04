@@ -10,6 +10,17 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.RollingRandomAccessFileAppender;
+import org.apache.logging.log4j.core.appender.rolling.DefaultRolloverStrategy;
+import org.apache.logging.log4j.core.appender.rolling.RollingRandomAccessFileManager;
+import org.apache.logging.log4j.core.appender.rolling.SizeBasedTriggeringPolicy;
+import org.apache.logging.log4j.core.config.AbstractConfiguration;
+import org.apache.logging.log4j.core.config.AppenderRef;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.bitcoinj.core.*;
 import org.bitcoinj.core.Wallet.BalanceType;
 import org.bitcoinj.kits.WalletAppKit;
@@ -17,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import bitmark.com.config.BitmarkConfigReader;
+
 
 /**
  * <p>
@@ -27,10 +39,11 @@ import bitmark.com.config.BitmarkConfigReader;
  *
  */
 public class BitmarkWalletService {
-	private static final Logger log = LoggerFactory.getLogger(BitmarkWalletService.class);
+	private static Logger log = LoggerFactory.getLogger(BitmarkWalletService.class);;
 	private static boolean enableStdin = false;
 
 	public static void main(String[] args) throws Exception {
+		 
 		// create the Options
 		Options options = new Options();
 		options.addOption("h", "help", false, "print this message");
@@ -75,10 +88,17 @@ public class BitmarkWalletService {
 		}
 
 		BitmarkConfigReader configs = new BitmarkConfigReader(configFile);
-		configs.getBitcoinPeers();
+		String walletDirectory = configs.getDataDirectory()+"/wallet";
+		String logDirectory = configs.getDataDirectory()+"/log";
+		System.out.println("logDirectory in main: "+logDirectory);
+		
+		// start log
+		System.out.println("Start logging...");
+		configure(logDirectory);
+		
 		// prepare the Wallet
 		NetType netType = NetType.valueOf(net.toUpperCase());
-		BitmarkWalletKit bitmarkWalletKit = new BitmarkWalletKit(netType, configs.getWalletFolder(), configs.getBitcoinPeers());
+		BitmarkWalletKit bitmarkWalletKit = new BitmarkWalletKit(netType, walletDirectory, configs.getBitcoinPeers());
 		WalletAppKit kit = bitmarkWalletKit.getWalletAppkit();
 		if ( kit == null ) {
 			log.error("walletappkit is null!");
@@ -226,5 +246,31 @@ public class BitmarkWalletService {
 		formatter.printHelp(" ", options, false);
 
 	}
+	
+	public static void configure(String logDirecotry) {
+		LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        AbstractConfiguration config = (AbstractConfiguration) ctx.getConfiguration();
+        
+		final String fileName = "/bitmarkWallet.log";
+		final String filePattern = "/bitmarkWallet-%i.log";
+		final String pattern = "%d{yyyy-MM-dd'T'HH:mm:ssZ} %p %c [%t] %m%n";
+		
+		SizeBasedTriggeringPolicy policy = SizeBasedTriggeringPolicy.createPolicy("10 MB"); 
+		DefaultRolloverStrategy strategy = DefaultRolloverStrategy.createStrategy("20", "0", "max", 
+				"0", null, true, config);
+		PatternLayout layout = PatternLayout.createLayout(pattern, null, 
+				config, null, null, true, false, "", "");
+        
+        RollingRandomAccessFileAppender fileAppender = RollingRandomAccessFileAppender.createAppender(logDirecotry+fileName, logDirecotry+filePattern,
+        		"true", "RollingFiles", "true", String.valueOf(RollingRandomAccessFileManager.DEFAULT_BUFFER_SIZE), policy, strategy, layout, null, "true", "true", "", config); 
+        
+        fileAppender.start();
+        config.addAppender(fileAppender);
+        AppenderRef[] refs = new AppenderRef[] { AppenderRef.createAppenderRef(fileAppender.getName(), null, null) };
+        LoggerConfig loggerConfig = LoggerConfig.createLogger("false", Level.INFO, LogManager.ROOT_LOGGER_NAME, "true", refs, null, config, null);
+        loggerConfig.addAppender(fileAppender, null, null);
+        config.addLogger(LogManager.ROOT_LOGGER_NAME, loggerConfig);
+        ctx.updateLoggers();
+    }
 
 }

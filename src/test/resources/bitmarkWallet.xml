@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1" ?>
 <configuration>
-	<wallet>
-		<folder>./wallet</folder>
-	</wallet>
+	<data_directory>./bitmark-pay</data_directory>
 	<bitcoin>
 		<peers>
 			<ip port="17002">127.0.0.1</ip>

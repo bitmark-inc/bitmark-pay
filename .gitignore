@@ -5,4 +5,4 @@
 *.wallet
 target
 log
-config
+config/*

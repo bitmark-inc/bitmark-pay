@@ -3,11 +3,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>bitmark.com</groupId>
-	<artifactId>bitmarkWalletService</artifactId>
+	<artifactId>bitmarkPaytService</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>walletService</name>
+	<name>payService</name>
 	<url>http://bitmark.com</url>
 
 	<properties>
@@ -98,7 +98,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>bitmark.com.wallet.BitmarkWalletService</mainClass>
+							<mainClass>bitmark.com.wallet.BitmarkPayService</mainClass>
 						</manifest>
 					</archive>
 					<descriptorRefs>

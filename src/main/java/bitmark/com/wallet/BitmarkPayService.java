@@ -40,8 +40,8 @@ import bitmark.com.config.BitmarkConfigReader;
  * @author yuntai
  *
  */
-public class BitmarkWalletService {
-	private static Logger log = LoggerFactory.getLogger(BitmarkWalletService.class);;
+public class BitmarkPayService {
+	private static Logger log = LoggerFactory.getLogger(BitmarkPayService.class);;
 	private static boolean enableStdin = false;
 
 	public static void main(String[] args) throws Exception {

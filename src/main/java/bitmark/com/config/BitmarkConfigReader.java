@@ -42,7 +42,6 @@ public class BitmarkConfigReader {
 	
 	private List<PeerAddress> parseBitCoinPeers(XMLConfiguration config) throws Exception {
 		List<String> peers = config.getList(String.class, "bitcoin.peers.ip");
-		System.out.printf("Get %d bitcoin peers from config\n", peers.size());
 		if (peers.size() == 0) {
 			return null;
 		}

@@ -98,7 +98,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>bitmark.com.wallet.BitmarkPayService</mainClass>
+							<mainClass>bitmark.com.pay.BitmarkPayService</mainClass>
 						</manifest>
 					</archive>
 					<descriptorRefs>

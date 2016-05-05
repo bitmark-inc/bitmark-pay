@@ -3,7 +3,7 @@ configuration:
   properties:
     property:
       name: rollingFileName
-      value: bitmark-pay/log/bitmarkWallet.log
+      value: bitmark-pay/log/bitmarkPay.log
       
   appenders:       
     Console:
@@ -14,7 +14,7 @@ configuration:
     RollingRandomAccessFile:
       name: RollingFiles
       fileName: "${rollingFileName}"
-      filePattern: "log/bitmarkWallet-%i.log"
+      filePattern: "log/bitmarkPay-%i.log"
       Policies:
         SizeBasedTriggeringPolicy:
             size: "10 MB"

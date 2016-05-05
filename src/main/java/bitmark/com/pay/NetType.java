@@ -1,4 +1,4 @@
-package bitmark.com.wallet;
+package bitmark.com.pay;
 
 public enum NetType {
 	LIVENET, TESTNET, REGTEST, LOCAL

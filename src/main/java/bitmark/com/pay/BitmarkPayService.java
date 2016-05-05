@@ -2,7 +2,7 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package bitmark.com.wallet;
+package bitmark.com.pay;
 
 import java.io.File;
 
@@ -24,7 +24,8 @@ import org.apache.logging.log4j.core.config.AppenderRef;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
-import org.bitcoinj.core.*;
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.Wallet.BalanceType;
 import org.bitcoinj.kits.WalletAppKit;
 import org.slf4j.Logger;
@@ -265,8 +266,8 @@ public class BitmarkPayService {
 		LoggerContext context = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
 		Configuration config = (AbstractConfiguration) context.getConfiguration();
 
-		final String fileName = "/bitmarkWallet.log";
-		final String filePattern = "/bitmarkWallet-%i.log";
+		final String fileName = "/bitmarkPay.log";
+		final String filePattern = "/bitmarkPay-%i.log";
 		final String pattern = "%d{yyyy-MM-dd'T'HH:mm:ssZ} %p %c [%t] %m%n";
 
 		SizeBasedTriggeringPolicy policy = SizeBasedTriggeringPolicy.createPolicy("10 MB");

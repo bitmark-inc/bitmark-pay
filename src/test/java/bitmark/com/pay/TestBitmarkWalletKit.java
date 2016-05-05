@@ -1,4 +1,4 @@
-package bitmark.com.wallet;
+package bitmark.com.pay;
 
 import static org.junit.Assert.*;
 
@@ -6,6 +6,9 @@ import org.bitcoinj.core.Wallet.SendRequest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import bitmark.com.pay.BitmarkWalletKit;
+import bitmark.com.pay.NetType;
 
 public class TestBitmarkWalletKit {
 

@@ -82,23 +82,23 @@ public class BitmarkWalletKit {
 		bitmarkWalletFileName = filePrefix + "-" + net;
 
 		switch (net) {
-		case LIVENET:
+		case BITMARK:
 			netParams = MainNetParams.get();
-		case TESTNET:
-			netParams = TestNet3Params.get();
-			break;
-		case REGTEST:
+		case TESTING:
 			netParams = BitmarkRegTestParams.get();
 			break;
-		case LOCAL:
-			netParams = RegTestParams.get();
+		case LOCAL_BITCOIN_TESTNET:
+			netParams = TestNet3Params.get();
+			break;
+		case LOCAL_BITCOIN_REG:
+			netParams = RegTestParams.get(); 
 			break;
 		default:
 			throw new IOException("Invalid net: "+net);
 		}
 
 		walletAppkit = new WalletAppKit(netParams, new File(walletFolder), bitmarkWalletFileName);
-		if (net.equals(NetType.LOCAL)) {
+		if (net.equals(NetType.LOCAL_BITCOIN_REG)) {
 			walletAppkit.connectToLocalHost();
 		} 
 		

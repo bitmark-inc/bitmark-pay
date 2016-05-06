@@ -1,5 +1,5 @@
 package bitmark.com.pay;
 
 public enum NetType {
-	LIVENET, TESTNET, REGTEST, LOCAL
+	BITMARK,TESTING,LOCAL_BITCOIN_TESTNET,LOCAL_BITCOIN_REG
 }

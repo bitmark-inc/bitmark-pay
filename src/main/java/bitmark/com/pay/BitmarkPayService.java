@@ -54,7 +54,7 @@ public class BitmarkPayService {
 		options.addOption(Option.builder().longOpt("password").desc("give password for encrypt, decrypt, pay")
 				.hasArg(true).build());
 		options.addOption(Option.builder().longOpt("net").required(true)
-				.desc("*the net type the wallet is going to link: local|regtest|testnet|livenet").hasArg(true).build());
+				.desc("*the net type the wallet is going to link: bitmark|testing|local_bitcoin_testnet|local_bitcoin_reg").hasArg(true).build());
 		options.addOption(
 				Option.builder().longOpt("config").required(true).desc("*the config file").hasArg(true).build());
 		options.addOption(Option.builder().longOpt("log-config").required(false).desc("the log4j config file")

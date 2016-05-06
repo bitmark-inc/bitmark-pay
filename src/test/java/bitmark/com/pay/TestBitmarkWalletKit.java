@@ -18,7 +18,7 @@ public class TestBitmarkWalletKit {
 	
 	@Before
 	public void setUp() throws Exception {
-		net = NetType.LOCAL;
+		net = NetType.LOCAL_BITCOIN_REG;
 		bitmarkWalletKit = new BitmarkWalletKit(net, walletFolder, null);
 	}
 

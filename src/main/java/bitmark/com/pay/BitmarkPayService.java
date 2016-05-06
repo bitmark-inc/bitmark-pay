@@ -235,6 +235,11 @@ public class BitmarkPayService {
 				System.out.println(tx.getHashAsString());
 			}
 			break;
+		case INFO:
+			System.out.println("Wallet estimated satoshi: " + kit.wallet().getBalance(BalanceType.ESTIMATED_SPENDABLE));
+			System.out.println("Wallet available satoshi: " + kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE));
+			System.out.println("Wallet watched address: " + bitmarkWalletKit.getAddress());
+			break;
 		default:
 			printHelpMessage(options);
 			return;

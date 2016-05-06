@@ -10,5 +10,6 @@ public enum Commands {
 	PAY,
 	BALANCE,
 	ADDRESS,
-	PENDING_TX
+	PENDING_TX,
+	INFO,
 }

@@ -1,14 +1,14 @@
 package bitmark.com.json;
 
 public class InfoJsonResponse {
-	private Long estimated_balance;
-	private Long available_balance;
-	private String address;
+	private Long Estimated_balance;
+	private Long Available_balance;
+	private String Address;
 	
 	public InfoJsonResponse(Long estimated, Long available, String address) {
-		this.estimated_balance = estimated;
-		this.available_balance = available;
-		this.address = address;
+		this.Estimated_balance = estimated;
+		this.Available_balance = available;
+		this.Address = address;
 	}
 	
 }

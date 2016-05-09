@@ -31,7 +31,12 @@ import org.bitcoinj.kits.WalletAppKit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.Gson;
+
 import bitmark.com.config.BitmarkConfigReader;
+import bitmark.com.json.AddressJsonResponse;
+import bitmark.com.json.BalanceJsonResponse;
+import bitmark.com.json.InfoJsonResponse;
 
 /**
  * <p>
@@ -43,7 +48,6 @@ import bitmark.com.config.BitmarkConfigReader;
  */
 public class BitmarkPayService {
 	private static Logger log = LoggerFactory.getLogger(BitmarkPayService.class);;
-	private static boolean enableStdin = false;
 
 	public static void main(String[] args) throws Exception {
 
@@ -51,14 +55,19 @@ public class BitmarkPayService {
 		Options options = new Options();
 		options.addOption("h", "help", false, "print this message");
 		options.addOption("s", "stdin", false, "send password through stdin for encrypt, decrypt, pay");
+		options.addOption("j", "json", false, "json output");
 		options.addOption(Option.builder().longOpt("password").desc("give password for encrypt, decrypt, pay")
 				.hasArg(true).build());
 		options.addOption(Option.builder().longOpt("net").required(true)
-				.desc("*the net type the wallet is going to link: bitmark|testing|local_bitcoin_testnet|local_bitcoin_reg").hasArg(true).build());
+				.desc("*the net type the wallet is going to link: bitmark|testing|local_bitcoin_testnet|local_bitcoin_reg")
+				.hasArg(true).build());
 		options.addOption(
 				Option.builder().longOpt("config").required(true).desc("*the config file").hasArg(true).build());
 		options.addOption(Option.builder().longOpt("log-config").required(false).desc("the log4j config file")
 				.hasArg(true).build());
+
+		boolean enableStdin = false;
+		boolean enableJson = false;
 
 		String net = "";
 		String configFile = "";
@@ -80,6 +89,9 @@ public class BitmarkPayService {
 				logConfigFile = line.getOptionValue("log-config");
 				if (line.hasOption("stdin")) {
 					enableStdin = true;
+				}
+				if (line.hasOption("json")) {
+					enableJson = true;
 				}
 				if (line.getArgs().length > 0) {
 					cmd = Commands.valueOf(line.getArgs()[0].toUpperCase());
@@ -127,6 +139,9 @@ public class BitmarkPayService {
 		String consoleMsg;
 		String passwordFromCmd;
 		String password = null;
+		Long estimated = 0L;
+		Long available = 0L;
+		String address = null;
 
 		switch (cmd) {
 		case ENCRYPT:
@@ -220,11 +235,27 @@ public class BitmarkPayService {
 			System.out.println("Payment successed.");
 			break;
 		case BALANCE:
-			System.out.println("Wallet estimated satoshi: " + kit.wallet().getBalance(BalanceType.ESTIMATED_SPENDABLE));
-			System.out.println("Wallet available satoshi: " + kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE));
+			estimated = kit.wallet().getBalance(BalanceType.ESTIMATED_SPENDABLE).value;
+			available = kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value;
+			if (enableJson) {
+				Gson gson = new Gson();
+				BalanceJsonResponse response = new BalanceJsonResponse(estimated, available);
+				System.out.println(gson.toJson(response));
+			} else {
+				System.out.println("Wallet estimated satoshi: " + estimated);
+				System.out.println("Wallet available satoshi: " + available);
+			}
 			break;
 		case ADDRESS:
-			System.out.println("Wallet watched address: " + bitmarkWalletKit.getAddress());
+			address = bitmarkWalletKit.getAddress().toString();
+			if (enableJson) {
+				Gson gson = new Gson();
+				AddressJsonResponse response = new AddressJsonResponse(address);
+				System.out.println(gson.toJson(response));
+			} else {
+				System.out.println("Wallet watched address: " + bitmarkWalletKit.getAddress());
+			}
+
 			break;
 		case PENDING_TX:
 			if (kit.wallet().getPendingTransactions().size() == 0) {
@@ -236,9 +267,21 @@ public class BitmarkPayService {
 			}
 			break;
 		case INFO:
-			System.out.println("Wallet estimated satoshi: " + kit.wallet().getBalance(BalanceType.ESTIMATED_SPENDABLE));
-			System.out.println("Wallet available satoshi: " + kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE));
-			System.out.println("Wallet watched address: " + bitmarkWalletKit.getAddress());
+			estimated = kit.wallet().getBalance(BalanceType.ESTIMATED_SPENDABLE).value;
+			available = kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value;
+			address = bitmarkWalletKit.getAddress().toString();
+			if (enableJson) {
+				Gson gson = new Gson();
+				InfoJsonResponse response = new InfoJsonResponse(estimated, available, address);
+				System.out.println(gson.toJson(response));
+			} else {
+				System.out.println(
+						"Wallet estimated satoshi: " + kit.wallet().getBalance(BalanceType.ESTIMATED_SPENDABLE));
+				System.out.println(
+						"Wallet available satoshi: " + kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE));
+				System.out.println("Wallet watched address: " + bitmarkWalletKit.getAddress());
+			}
+
 			break;
 		default:
 			printHelpMessage(options);
@@ -261,6 +304,7 @@ public class BitmarkPayService {
 		System.out.println(" balance               get wallet balance");
 		System.out.println(" address               get wallet address");
 		System.out.println(" pending-tx            get pending transactions");
+		System.out.println(" info                  get wallet balance and address");
 
 		formatter.printHelp(" ", options, false);
 

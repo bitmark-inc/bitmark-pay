@@ -288,7 +288,7 @@ public class BitmarkPayService {
 			return;
 		}
 
-		if (!bitmarkWalletKit.walletIsEncrypted()) {
+		if (!bitmarkWalletKit.walletIsEncrypted() && !enableJson) {
 			System.out.println("NOTE: Please run encrypt to protect your wallet");
 		}
 

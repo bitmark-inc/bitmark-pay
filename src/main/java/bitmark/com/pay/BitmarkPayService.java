@@ -26,7 +26,7 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.Wallet.BalanceType;
+import org.bitcoinj.wallet.Wallet.BalanceType;
 import org.bitcoinj.kits.WalletAppKit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -225,7 +225,8 @@ public class BitmarkPayService {
 				System.err.println("First parameter is not hex");
 				return;
 			}
-			Address paymentAddr = new Address(kit.params(), targets[1]);
+			
+			Address paymentAddr = Address.fromBase58(kit.params(), targets[1]); 
 			if (!bitmarkWalletKit.sendCoins(txid, paymentAddr, null, password)) {
 				long needSatoshi = BitmarkWalletKit.BITMARK_FEE + BitmarkWalletKit.MINE_FEE;
 				System.err.printf("Payment failed, you might need %d satoshi and wallet balance is %d\n", needSatoshi,

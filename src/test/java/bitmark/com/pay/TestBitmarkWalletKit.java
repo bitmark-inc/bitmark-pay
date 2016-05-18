@@ -2,7 +2,6 @@ package bitmark.com.pay;
 
 import static org.junit.Assert.*;
 
-import org.bitcoinj.core.Wallet.SendRequest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,9 +34,6 @@ public class TestBitmarkWalletKit {
 		//Check wallet file name
 		String walletFileName = "bitmarkWallet-" +  net;
 		assertEquals(walletFileName, bitmarkWalletKit.getBitmarkWalletFileName());
-		
-		// Check default DEFAULT_FEE_PER_KB
-		assertEquals(BitmarkWalletKit.MINE_FEE, SendRequest.DEFAULT_FEE_PER_KB.value);
 	}
 
 }

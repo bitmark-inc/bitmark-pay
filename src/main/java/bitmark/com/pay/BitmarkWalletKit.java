@@ -15,15 +15,14 @@ import java.util.regex.Pattern;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.PeerAddress;
 import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.Wallet;
-import org.bitcoinj.core.Wallet.BalanceType;
-import org.bitcoinj.core.Wallet.SendRequest;
-import org.bitcoinj.core.WalletEventListener;
+import org.bitcoinj.wallet.SendRequest;
+import org.bitcoinj.wallet.Wallet;
+import org.bitcoinj.wallet.Wallet.BalanceType;
+import org.bitcoinj.wallet.listeners.WalletCoinsSentEventListener;
 import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.MainNetParams;
@@ -107,9 +106,6 @@ public class BitmarkWalletKit {
 			peerAddresses.toArray(arrayPeerAddr);
 			walletAppkit.setPeerNodes(arrayPeerAddr);
 		}
-
-		// Set the default fee
-		SendRequest.DEFAULT_FEE_PER_KB = Coin.valueOf(MINE_FEE);
 	}
 	
 	public WalletAppKit getWalletAppkit(){
@@ -125,40 +121,13 @@ public class BitmarkWalletKit {
 	 */
 	public void setWalletListener() {
 		Wallet wallet = walletAppkit.wallet();
-		wallet.addEventListener(new WalletEventListener() {
-
-			public void onKeysAdded(List<ECKey> keys) {
-				// TODO Auto-generated method stub
-
-			}
-
-			public void onCoinsReceived(Wallet wallet, final Transaction tx, Coin prevBalance, Coin newBalance) {
-			}
-
+		wallet.addCoinsSentEventListener(new WalletCoinsSentEventListener() {
+			
+			@Override
 			public void onCoinsSent(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {
 				System.out.println("Send coin, preBalance: " + prevBalance);
 				System.out.println("new balance: " + newBalance);
 			}
-
-			public void onReorganize(Wallet wallet) {
-				System.out.println("Reveiced new block: " + wallet.getLastBlockSeenHeight());
-				// TODO Auto-generated method stub
-
-			}
-
-			public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
-			}
-
-			public void onWalletChanged(Wallet wallet) {
-				// TODO Auto-generated method stub
-
-			}
-
-			public void onScriptsChanged(Wallet wallet, List<Script> scripts, boolean isAddingScripts) {
-				// TODO Auto-generated method stub
-
-			}
-
 		});
 	}
 
@@ -210,6 +179,8 @@ public class BitmarkWalletKit {
 			Coin bitmarkFee = Coin.valueOf(BITMARK_FEE);
 			log.info("Sending {} satoshis to {}", BITMARK_FEE, forwardingAddress);
 			SendRequest sendRequest = SendRequest.to(forwardingAddress, bitmarkFee);
+			// Set the default fee
+			sendRequest.feePerKb = Coin.valueOf(MINE_FEE);
 			sendRequest.tx.addOutput(Coin.valueOf(0), generateBitmarkScript(txId));
 			if (changeAddress != null) {
 				sendRequest.changeAddress = changeAddress;
@@ -230,7 +201,7 @@ public class BitmarkWalletKit {
 					log.info("Wallet balance (available satoshi): {}",
 							wallet.getBalance(BalanceType.AVAILABLE_SPENDABLE));
 				}
-			}, MoreExecutors.sameThreadExecutor());
+			}, MoreExecutors.directExecutor());
 
 			// Make the thread wait until the tx broadcast has completed
 			try {

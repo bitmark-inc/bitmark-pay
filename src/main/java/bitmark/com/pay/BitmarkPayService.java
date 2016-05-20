@@ -5,7 +5,6 @@
 package bitmark.com.pay;
 
 import java.io.File;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -130,9 +129,28 @@ public class BitmarkPayService {
 			return;
 		}
 
+		kit.setAutoStop(false);
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			@Override
+			public void run() {
+				try {
+					log.info("state before stop: {}", kit.state());
+					log.info("kit stopping...store block to: {}", bitmarkWalletKit.getWalletFile().getAbsolutePath());
+					kit.peerGroup().stop();
+					kit.wallet().saveToFile(bitmarkWalletKit.getWalletFile());
+					kit.store().close();
+					log.info("kit stopped");
+				} catch (Exception e) {
+					log.info("in runtime exeption: {}", e);
+					e.printStackTrace();
+				}
+			}
+		});
+
 		kit.startAsync();
 		kit.awaitRunning();
 
+		log.info("state: " + kit.state());
 		log.info("{} balance: {}", bitmarkWalletKit.getBitmarkWalletFileName(),
 				kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE));
 
@@ -225,8 +243,8 @@ public class BitmarkPayService {
 				System.err.println("First parameter is not hex");
 				return;
 			}
-			
-			Address paymentAddr = Address.fromBase58(kit.params(), targets[1]); 
+
+			Address paymentAddr = Address.fromBase58(kit.params(), targets[1]);
 			if (!bitmarkWalletKit.sendCoins(txid, paymentAddr, null, password)) {
 				long needSatoshi = BitmarkWalletKit.BITMARK_FEE + BitmarkWalletKit.MINE_FEE;
 				System.err.printf("Payment failed, you might need %d satoshi and wallet balance is %d\n", needSatoshi,

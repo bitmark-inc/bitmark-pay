@@ -14,15 +14,15 @@ public class BitmarkConfigReader {
 
 	private String dataDirectory;
 	private List<PeerAddress> bitcoinPeers;
-	
+
 	private final String configDataDirectoryName = "data_directory";
-	
+
 	public BitmarkConfigReader(String file) throws Exception {
 		Configurations configs = new Configurations();
 		if (file == null || file.equals("")) {
 			throw new ConfigurationException("Cannot find config file");
 		}
-		
+
 		try {
 			XMLConfiguration config = configs.xml(file);
 			dataDirectory = parseDataDirectory(config);
@@ -35,19 +35,19 @@ public class BitmarkConfigReader {
 	private String parseDataDirectory(XMLConfiguration config) throws ConfigurationException {
 		String dataDirectory = config.getString(configDataDirectoryName);
 		if (dataDirectory == null) {
-			throw new ConfigurationException("Cannot find required filed: "+configDataDirectoryName);
+			throw new ConfigurationException("Cannot find required filed: " + configDataDirectoryName);
 		}
 		return dataDirectory;
 	}
-	
+
 	private List<PeerAddress> parseBitCoinPeers(XMLConfiguration config) throws Exception {
 		List<String> peers = config.getList(String.class, "bitcoin.peers.ip");
 		if (peers == null || peers.size() == 0) {
 			return null;
 		}
-		
+
 		List<Integer> ports = config.getList(Integer.class, "bitcoin.peers.ip[@port]");
-		
+
 		List<PeerAddress> peerAddresses = new ArrayList<PeerAddress>();
 		for (int i = 0; i < peers.size(); i++) {
 			byte[] address = convertToInetAddress(peers.get(i));
@@ -60,16 +60,16 @@ public class BitmarkConfigReader {
 		}
 		return peerAddresses;
 	}
-	
-	private byte[] convertToInetAddress(String address) throws Exception{
+
+	private byte[] convertToInetAddress(String address) throws Exception {
 		byte[] byteAddr = new byte[4];
 		String[] tmpAddr = address.split("\\.");
 		if (tmpAddr.length != 4) {
-			String msg = "Incorrect address format: "+ address; 
+			String msg = "Incorrect address format: " + address;
 			System.err.println(msg);
 			throw new Exception(msg);
 		}
-		
+
 		for (int i = 0; i < tmpAddr.length; i++) {
 			byteAddr[i] = Integer.valueOf(tmpAddr[i]).byteValue();
 		}
@@ -83,5 +83,4 @@ public class BitmarkConfigReader {
 	public List<PeerAddress> getBitcoinPeers() {
 		return bitcoinPeers;
 	}
-
 }

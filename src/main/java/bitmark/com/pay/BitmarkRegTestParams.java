@@ -18,7 +18,9 @@ import java.math.BigInteger;
 import static com.google.common.base.Preconditions.checkState;
 
 /**
- * <p>Network parameters for bitmark regression and local test.</p>
+ * <p>
+ * Network parameters for bitmark regression and local test.
+ * </p>
  */
 public class BitmarkRegTestParams extends TestNet2Params {
 	private static final Logger log = LoggerFactory.getLogger(BitmarkRegTestParams.class);

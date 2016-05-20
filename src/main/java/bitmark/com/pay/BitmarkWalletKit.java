@@ -57,6 +57,7 @@ public class BitmarkWalletKit {
 	public static final long MINE_FEE = 5000L;
 
 	private String bitmarkWalletFileName;
+	private String walletFolder;
 	private Pattern hexPattern;
 
 	private static Scanner scanner;
@@ -76,6 +77,8 @@ public class BitmarkWalletKit {
 	public BitmarkWalletKit(NetType net, String walletFolder, List<PeerAddress> peerAddresses)
 			throws IOException {
 		NetworkParameters netParams;
+		this.walletFolder = walletFolder;
+		
 		String filePrefix = "bitmarkWallet";
 
 		bitmarkWalletFileName = filePrefix + "-" + net;
@@ -260,6 +263,9 @@ public class BitmarkWalletKit {
 		return walletAppkit.wallet().isEncrypted();
 	}
 
+	public File getWalletFile() {
+		return new File(walletFolder, bitmarkWalletFileName + ".wallet");
+	}
 	/**
 	 * <p>
 	 * Create a system console to let the user type password.

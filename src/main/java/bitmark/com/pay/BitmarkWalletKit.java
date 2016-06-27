@@ -86,6 +86,7 @@ public class BitmarkWalletKit {
 		switch (net) {
 		case BITMARK:
 			netParams = MainNetParams.get();
+			break;
 		case TESTING:
 			netParams = BitmarkRegTestParams.get();
 			break;

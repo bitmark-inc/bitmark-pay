@@ -19,6 +19,8 @@ import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.PeerAddress;
 import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.Utils;
+import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
 import org.bitcoinj.wallet.Wallet.BalanceType;
@@ -61,10 +63,9 @@ public class BitmarkWalletKit {
 	private Pattern hexPattern;
 
 	private static Scanner scanner;
-	
+
 	private WalletAppKit walletAppkit = null;
-	
-	
+
 	/**
 	 * <p>
 	 * Set a bitcoinj walletAppKit.
@@ -74,11 +75,10 @@ public class BitmarkWalletKit {
 	 *            specify the net for the walletAppKit. @see NetType
 	 * @throws IOException
 	 */
-	public BitmarkWalletKit(NetType net, String walletFolder, List<PeerAddress> peerAddresses)
-			throws IOException {
+	public BitmarkWalletKit(NetType net, String walletFolder, List<PeerAddress> peerAddresses) throws IOException {
 		NetworkParameters netParams;
 		this.walletFolder = walletFolder;
-		
+
 		String filePrefix = "bitmarkWallet";
 
 		bitmarkWalletFileName = filePrefix + "-" + net;
@@ -94,27 +94,27 @@ public class BitmarkWalletKit {
 			netParams = TestNet3Params.get();
 			break;
 		case LOCAL_BITCOIN_REG:
-			netParams = RegTestParams.get(); 
+			netParams = RegTestParams.get();
 			break;
 		default:
-			throw new IOException("Invalid net: "+net);
+			throw new IOException("Invalid net: " + net);
 		}
 
 		walletAppkit = new WalletAppKit(netParams, new File(walletFolder), bitmarkWalletFileName);
 		if (net.equals(NetType.LOCAL_BITCOIN_REG)) {
 			walletAppkit.connectToLocalHost();
-		} 
-		
+		}
+
 		if (peerAddresses != null) { // peerAddress is specified
 			PeerAddress[] arrayPeerAddr = new PeerAddress[peerAddresses.size()];
 			peerAddresses.toArray(arrayPeerAddr);
 			walletAppkit.setPeerNodes(arrayPeerAddr);
 		}
 	}
-	
-	public WalletAppKit getWalletAppkit(){
+
+	public WalletAppKit getWalletAppkit() {
 		return walletAppkit;
-	} 
+	}
 
 	/**
 	 * <p>
@@ -126,7 +126,7 @@ public class BitmarkWalletKit {
 	public void setWalletListener() {
 		Wallet wallet = walletAppkit.wallet();
 		wallet.addCoinsSentEventListener(new WalletCoinsSentEventListener() {
-			
+
 			@Override
 			public void onCoinsSent(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {
 				System.out.println("Send coin, preBalance: " + prevBalance);
@@ -148,7 +148,7 @@ public class BitmarkWalletKit {
 	 */
 
 	public Address getAddress() throws IOException {
-		Wallet wallet = walletAppkit.wallet(); 
+		Wallet wallet = walletAppkit.wallet();
 		NetworkParameters netParams = walletAppkit.params();
 		Address address;
 		if (wallet.getIssuedReceiveAddresses().size() < 1) {
@@ -167,17 +167,18 @@ public class BitmarkWalletKit {
 	 * Send coins (bitmark and mine fee) from this wallet.
 	 * </p>
 	 * 
-	 * @param txid bitmark transaction ID to pay
+	 * @param txid
+	 *            bitmark transaction ID to pay
 	 * @param forwardingAddress
 	 *            address will receive the bitmark coins
 	 * @param changeAddress
-	 *            address will receive the changes. Set null to send to new address from the wallet
+	 *            address will receive the changes. Set null to send to new
+	 *            address from the wallet
 	 * @param password
 	 *            required if the wallet is encrypted
 	 * @return true after the payment has been broadcasted successfully
 	 */
-	public boolean sendCoins(String txId, Address forwardingAddress, Address changeAddress,
-			String password) {
+	public boolean sendCoins(String txId, Address forwardingAddress, Address changeAddress, String password) {
 		Wallet wallet = walletAppkit.wallet();
 		try {
 			Coin bitmarkFee = Coin.valueOf(BITMARK_FEE);
@@ -230,7 +231,7 @@ public class BitmarkWalletKit {
 		}
 		int countTxId = txId.length() / 2;
 		String scriptStr = "6a" + Integer.toHexString(countTxId) + txId;
-		byte[] bytes = new BigInteger(scriptStr,16).toByteArray();
+		byte[] bytes = new BigInteger(scriptStr, 16).toByteArray();
 		return new Script(bytes);
 	}
 
@@ -267,6 +268,7 @@ public class BitmarkWalletKit {
 	public File getWalletFile() {
 		return new File(walletFolder, bitmarkWalletFileName + ".wallet");
 	}
+
 	/**
 	 * <p>
 	 * Create a system console to let the user type password.
@@ -285,7 +287,7 @@ public class BitmarkWalletKit {
 		char passwordArray[] = console.readPassword(msg);
 		return String.valueOf(passwordArray);
 	}
-	
+
 	public static String getPassword(String consoleMsg, String password) {
 		if (password != null) {
 			return password;
@@ -293,8 +295,7 @@ public class BitmarkWalletKit {
 		return getPasswordConsole(consoleMsg);
 	}
 
-	
-	public static String getStdinPassword(){
+	public static String getStdinPassword() {
 		if (scanner == null) {
 			scanner = new Scanner(System.in);
 		}

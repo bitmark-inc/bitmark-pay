@@ -12,4 +12,5 @@ public enum Commands {
 	ADDRESS,
 	PENDING_TX,
 	INFO,
+	RESTORE,
 }

@@ -25,6 +25,8 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.Utils;
+import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.Wallet.BalanceType;
 import org.bitcoinj.kits.WalletAppKit;
 import org.slf4j.Logger;
@@ -129,6 +131,18 @@ public class BitmarkPayService {
 			return;
 		}
 
+		if (cmd == Commands.RESTORE) {
+			if (line.getArgs().length == 1) {
+				targets = line.getArgs();
+			} else {
+				System.err.println("Please give the wallet seed");
+				return;
+			}
+
+			String seedStr = targets[0];
+			kit.restoreWalletFromSeed(new DeterministicSeed(seedStr.getBytes(), seedStr, Utils.currentTimeSeconds()));
+		}
+
 		kit.setAutoStop(false);
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
@@ -161,6 +175,7 @@ public class BitmarkPayService {
 		Long available = 0L;
 		String address = null;
 
+		// deal with command after kit start
 		switch (cmd) {
 		case ENCRYPT:
 			if (bitmarkWalletKit.walletIsEncrypted()) {
@@ -302,6 +317,9 @@ public class BitmarkPayService {
 			}
 
 			break;
+		case RESTORE:
+			log.info("wallet restore complete.");
+			break;
 		default:
 			printHelpMessage(options);
 			return;
@@ -319,11 +337,12 @@ public class BitmarkPayService {
 		HelpFormatter formatter = new HelpFormatter();
 		System.out.println("bitmarkWalletService [options] <command>");
 		System.out.println("command:");
-		System.out.println(" pay txid addresses    pay the addresses");
-		System.out.println(" balance               get wallet balance");
-		System.out.println(" address               get wallet address");
-		System.out.println(" pending-tx            get pending transactions");
-		System.out.println(" info                  get wallet balance and address");
+		System.out.println(" restore <seed>            create or restore wallet");
+		System.out.println(" pay <txid> <address>      pay to the address");
+		System.out.println(" balance                   get wallet balance");
+		System.out.println(" address                   get wallet address");
+		System.out.println(" pending-tx                get pending transactions");
+		System.out.println(" info                      get wallet balance and address");
 
 		formatter.printHelp(" ", options, false);
 

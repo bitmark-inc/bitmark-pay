@@ -265,6 +265,7 @@ public class BitmarkPayService {
 				System.err.printf("Payment failed, you might need %d satoshi and wallet balance is %d\n", needSatoshi,
 						kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value);
 				System.err.printf("Failed payment:\ntxid:%s\naddress:%s\n", txid, paymentAddr);
+				return;
 			}
 			System.out.println("Payment successed.");
 			break;
@@ -294,7 +295,7 @@ public class BitmarkPayService {
 		case PENDING_TX:
 			if (kit.wallet().getPendingTransactions().size() == 0) {
 				System.out.println("No pending transactions");
-				break;
+				return;
 			}
 			for (Transaction tx : kit.wallet().getPendingTransactions()) {
 				System.out.println(tx.getHashAsString());

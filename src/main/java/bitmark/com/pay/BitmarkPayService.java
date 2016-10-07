@@ -5,12 +5,15 @@
 package bitmark.com.pay;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -22,8 +25,10 @@ import org.apache.logging.log4j.core.config.AbstractConfiguration;
 import org.apache.logging.log4j.core.config.AppenderRef;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.lookup.MainMapLookup;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.Utils;
 import org.bitcoinj.wallet.DeterministicSeed;
@@ -35,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 
 import bitmark.com.config.BitmarkConfigReader;
+import bitmark.com.json.TxIdJsonResponse;
 import bitmark.com.json.AddressJsonResponse;
 import bitmark.com.json.BalanceJsonResponse;
 import bitmark.com.json.InfoJsonResponse;
@@ -43,36 +49,47 @@ import bitmark.com.json.InfoJsonResponse;
  * <p>
  * Provide command line service for BitmarkWalletKit.
  * </p>
- * 
+ *
  * @author yuntai
  *
  */
 public class BitmarkPayService {
-	private static Logger log = LoggerFactory.getLogger(BitmarkPayService.class);;
+
+	// initialise later after we have determined the directory location
+	// but cannot delay too long or some other process will start logging
+	// and weird log file names will be generated
+	private static Logger log = null; //LoggerFactory.getLogger(BitmarkPayService.class);
 
 	public static void main(String[] args) throws Exception {
+
+		{
+			// just in case: set a meaningful default
+			// this is overidden later
+			String[] a = {"logdir", "./log",
+				      "prefix", "unknown"};
+			MainMapLookup.setMainArguments(a);
+		}
 
 		// create the Options
 		Options options = new Options();
 		options.addOption("h", "help", false, "print this message");
 		options.addOption("s", "stdin", false, "send password through stdin for encrypt, decrypt, pay");
 		options.addOption("j", "json", false, "json output");
-		options.addOption(Option.builder().longOpt("password").desc("give password for encrypt, decrypt, pay")
-				.hasArg(true).build());
-		options.addOption(Option.builder().longOpt("net").required(true)
-				.desc("*the net type the wallet is going to link: bitmark|testing|local_bitcoin_testnet|local_bitcoin_reg")
-				.hasArg(true).build());
-		options.addOption(
-				Option.builder().longOpt("config").required(true).desc("*the config file").hasArg(true).build());
-		options.addOption(Option.builder().longOpt("log-config").required(false).desc("the log4j config file")
-				.hasArg(true).build());
+		options.addOption(Option.builder().longOpt("password")
+				  .desc("give password for encrypt, decrypt, pay")
+				  .hasArg(true).build());
+		options.addOption(Option.builder().longOpt("network").required(true)
+				  .desc("*the net type the wallet is going to link: bitmark|testing|local_bitcoin_testnet|local_bitcoin_reg")
+				  .hasArg(true).build());
+		options.addOption(Option.builder().longOpt("config-dir").required(true)
+				  .desc("*the configuration directory file")
+				  .hasArg(true).build());
 
 		boolean enableStdin = false;
 		boolean enableJson = false;
 
-		String net = "";
-		String configFile = "";
-		String logConfigFile = "";
+		String network = "";
+		String configDirectory = "";
 		Commands cmd = null;
 		String[] targets = null;
 		CommandLine line;
@@ -85,9 +102,8 @@ public class BitmarkPayService {
 				printHelpMessage(options);
 				return;
 			} else {
-				net = line.getOptionValue("net");
-				configFile = line.getOptionValue("config");
-				logConfigFile = line.getOptionValue("log-config");
+				network = line.getOptionValue("network");
+				configDirectory = line.getOptionValue("config-dir");
 				if (line.hasOption("stdin")) {
 					enableStdin = true;
 				}
@@ -107,24 +123,42 @@ public class BitmarkPayService {
 			return;
 		}
 
-		BitmarkConfigReader configs = new BitmarkConfigReader(configFile);
-		String walletDirectory = configs.getDataDirectory() + "/wallet";
-		String logDirectory = configs.getDataDirectory() + "/log";
+		// configure logger first or it will fail as read configs dependencies will start it
+		{
+			String[] a = {"logdir", configDirectory + "/log",
+			      "prefix", network};
+			MainMapLookup.setMainArguments(a);
+		}
+		log = LoggerFactory.getLogger(BitmarkPayService.class);
 
 		// start log
-
-		if (logConfigFile == "" || logConfigFile == null) {
-			configure(logDirectory);
-		} else {
-			File file = new File(logConfigFile);
-			LoggerContext context = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
-			context.setConfigLocation(file.toURI());
-		}
 		log.info("start logging..");
 
+		// read the network configuration file
+		String configFile = configDirectory + "/" + network + ".xml";
+
+		BitmarkConfigReader configs = null;
+		try {
+			configs = new BitmarkConfigReader(configFile);
+		} catch (ConfigurationException e) {
+			log.error("read configuration from: '{}' failed: {}\n", configFile, e);
+			System.err.printf("read configuration from: '%s' failed: %s\n", configFile, e);
+			System.exit(1);
+		}
+
+		// indicate if real or default configuration was used
+		if (configs.isDefault()) {
+			log.warn("configuration file: '{}'  was missing, using built-in defaults", configFile);
+		} else {
+			log.info("using configuration file: '{}'", configFile);
+		}
+
+		String walletDirectory = configDirectory + "/wallet";
+
 		// prepare the Wallet
-		NetType netType = NetType.valueOf(net.toUpperCase());
+		NetType netType = NetType.valueOf(network.toUpperCase());
 		BitmarkWalletKit bitmarkWalletKit = new BitmarkWalletKit(netType, walletDirectory, configs.getBitcoinPeers());
+
 		WalletAppKit kit = bitmarkWalletKit.getWalletAppkit();
 		if (kit == null) {
 			log.error("walletappkit is null!");
@@ -161,6 +195,7 @@ public class BitmarkPayService {
 			}
 		});
 
+		// startup and wait for bitcoin network connection
 		kit.startAsync();
 		kit.awaitRunning();
 
@@ -230,10 +265,10 @@ public class BitmarkPayService {
 			kit.wallet().decrypt(password);
 			break;
 		case PAY:
-			if (line.getArgs().length == 2) {
+			if (line.getArgs().length >= 3 && 1 == (line.getArgs().length % 2)) {
 				targets = line.getArgs();
 			} else {
-				System.err.println("Please give txid and addresses");
+				System.err.println("Please give txid address amount {address amount}...");
 				return;
 			}
 
@@ -253,21 +288,37 @@ public class BitmarkPayService {
 				}
 			}
 
-			String txid = targets[0];
-			if (!bitmarkWalletKit.checkHex(txid)) {
+			String payId = targets[0];
+			if (!bitmarkWalletKit.checkHex(payId)) {
 				System.err.println("First parameter is not hex");
 				return;
 			}
 
-			Address paymentAddr = Address.fromBase58(kit.params(), targets[1]);
-			if (!bitmarkWalletKit.sendCoins(txid, paymentAddr, null, password)) {
-				long needSatoshi = BitmarkWalletKit.BITMARK_FEE + BitmarkWalletKit.MINE_FEE;
-				System.err.printf("Payment failed, you might need %d satoshi and wallet balance is %d\n", needSatoshi,
+			List<Payment> payments = new ArrayList<Payment>();
+			Coin needSatoshi = Coin.valueOf(0);
+			for (int i = 1; i < targets.length; i += 2) {
+				Address paymentAddress = Address.fromBase58(kit.params(), targets[i]);
+				Coin amountSatoshi = Coin.valueOf(Long.parseLong(targets[i+1]));
+				//payments.add(BitmarkWalletKit.Payment(amountSatoshi, paymentAddress));
+				Payment p = new Payment(paymentAddress, amountSatoshi);
+				payments.add(p);
+				needSatoshi.add(amountSatoshi); // accumulate the total
+			}
+			String txId = bitmarkWalletKit.sendCoins(payId, payments, null, password);
+			if (null == txId) {
+				needSatoshi.add(BitmarkWalletKit.MINE_FEE);
+				System.err.printf("Payment failed, you need al least %d satoshi and wallet balance is %d\n", needSatoshi,
 						kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value);
-				System.err.printf("Failed payment:\ntxid:%s\naddress:%s\n", txid, paymentAddr);
+				System.err.printf("Failed payment for:\npayId: %s\n", payId);
 				return;
 			}
-			System.out.println("Payment successed.");
+			if (enableJson) {
+				Gson gson = new Gson();
+				TxIdJsonResponse response = new TxIdJsonResponse(txId);
+				System.out.println(gson.toJson(response));
+			} else {
+				System.out.printf("success: txid: %s\n", txId);
+			}
 			break;
 		case BALANCE:
 			estimated = kit.wallet().getBalance(BalanceType.ESTIMATED_SPENDABLE).value;
@@ -339,43 +390,13 @@ public class BitmarkPayService {
 		System.out.println("bitmarkWalletService [options] <command>");
 		System.out.println("command:");
 		System.out.println(" restore <seed>            create or restore wallet");
-		System.out.println(" pay <txid> <address>      pay to the address");
+		System.out.println(" pay <payId> <address>     pay to the address");
 		System.out.println(" balance                   get wallet balance");
 		System.out.println(" address                   get wallet address");
 		System.out.println(" pending-tx                get pending transactions");
 		System.out.println(" info                      get wallet balance and address");
 
 		formatter.printHelp(" ", options, false);
-
-	}
-
-	public static void configure(String logDirecotry) {
-
-		LoggerContext context = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
-		Configuration config = (AbstractConfiguration) context.getConfiguration();
-
-		final String fileName = "/bitmarkPay.log";
-		final String filePattern = "/bitmarkPay-%i.log";
-		final String pattern = "%d{yyyy-MM-dd'T'HH:mm:ssZ} %p %c [%t] %m%n";
-
-		SizeBasedTriggeringPolicy policy = SizeBasedTriggeringPolicy.createPolicy("10 MB");
-		DefaultRolloverStrategy strategy = DefaultRolloverStrategy.createStrategy("20", "1", "max", "0", null, true,
-				config);
-		PatternLayout layout = PatternLayout.createLayout(pattern, null, config, null, null, true, false, "", "");
-
-		RollingRandomAccessFileAppender fileAppender = RollingRandomAccessFileAppender.createAppender(
-				logDirecotry + fileName, logDirecotry + filePattern, "true", "RollingFiles", "true",
-				String.valueOf(RollingRandomAccessFileManager.DEFAULT_BUFFER_SIZE), policy, strategy, layout, null,
-				"true", "true", "", config);
-		fileAppender.start();
-		config.addAppender(fileAppender);
-
-		AppenderRef[] refs = new AppenderRef[] { AppenderRef.createAppenderRef(fileAppender.getName(), null, null) };
-		LoggerConfig loggerConfig = LoggerConfig.createLogger("false", Level.INFO, LogManager.ROOT_LOGGER_NAME, "true",
-				refs, null, config, null);
-		loggerConfig.addAppender(fileAppender, null, null);
-		config.addLogger(LogManager.ROOT_LOGGER_NAME, loggerConfig);
-		context.updateLoggers();
 
 	}
 

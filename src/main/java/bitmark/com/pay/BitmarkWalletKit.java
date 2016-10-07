@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Iterator;
 import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
@@ -38,10 +39,38 @@ import com.google.common.util.concurrent.MoreExecutors;
 
 /**
  * <p>
+ * Structure to hold a payment address and the amount to send
+ * </p>
+ */
+class Payment {
+
+	public final Address paymentAddress;
+	public final Coin amountSatoshi;
+
+	/**
+	 * <p>
+	 * send some satoshis to an address
+	 * </p>
+	 *
+	 * @param address
+	 *            address to make payment to
+	 * @param amount
+	 *            number of Satoshis to send
+	 */
+	public Payment(Address address, Coin amount) {
+		this.paymentAddress = address;
+		this.amountSatoshi = amount;
+	}
+
+}
+
+
+/**
+ * <p>
  * BitmarkWalletKit can create WalletAppKit according to different net setting,
  * and provides functions for BitmarkWalletService.
  * </p>
- * 
+ *
  * @author yuntai
  *
  */
@@ -49,14 +78,9 @@ public class BitmarkWalletKit {
 	private static final Logger log = LoggerFactory.getLogger(BitmarkWalletKit.class);
 
 	/**
-	 * Fee charged by bitmark, when you issue, transfer your bitmark item.
-	 */
-	public static final long BITMARK_FEE = 200000L;
-
-	/**
 	 * Fee charged by other bitcoin peer to mine the transaction
 	 */
-	public static final long MINE_FEE = 5000L;
+	public static final Coin MINE_FEE = Coin.valueOf(5000L);
 
 	private String bitmarkWalletFileName;
 	private String walletFolder;
@@ -70,7 +94,7 @@ public class BitmarkWalletKit {
 	 * <p>
 	 * Set a bitcoinj walletAppKit.
 	 * </p>
-	 * 
+	 *
 	 * @param net
 	 *            specify the net for the walletAppKit. @see NetType
 	 * @throws IOException
@@ -86,6 +110,9 @@ public class BitmarkWalletKit {
 		switch (net) {
 		case BITMARK:
 			netParams = MainNetParams.get();
+			break;
+		case DEVELOPMENT:
+			netParams = BitmarkRegTestParams.get();
 			break;
 		case TESTING:
 			netParams = BitmarkRegTestParams.get();
@@ -120,7 +147,7 @@ public class BitmarkWalletKit {
 	 * <p>
 	 * Set wallet listener.
 	 * </p>
-	 * 
+	 *
 	 * @param wallet
 	 */
 	public void setWalletListener() {
@@ -140,7 +167,7 @@ public class BitmarkWalletKit {
 	 * Get an address for the wallet. Will not refresh the address and always
 	 * use the same one
 	 * </p>
-	 * 
+	 *
 	 * @param wallet
 	 * @param netParams
 	 * @return Address
@@ -162,14 +189,15 @@ public class BitmarkWalletKit {
 		return address;
 	}
 
+
 	/**
 	 * <p>
 	 * Send coins (bitmark and mine fee) from this wallet.
 	 * </p>
-	 * 
+	 *
 	 * @param txid
 	 *            bitmark transaction ID to pay
-	 * @param forwardingAddress
+	 * @param payments
 	 *            address will receive the bitmark coins
 	 * @param changeAddress
 	 *            address will receive the changes. Set null to send to new
@@ -178,15 +206,38 @@ public class BitmarkWalletKit {
 	 *            required if the wallet is encrypted
 	 * @return true after the payment has been broadcasted successfully
 	 */
-	public boolean sendCoins(String txId, Address forwardingAddress, Address changeAddress, String password) {
-		Wallet wallet = walletAppkit.wallet();
+        //public boolean sendCoins(String payId, Address forwardingAddress, Address changeAddress, Long amountSatoshi, String password) {
+	public String sendCoins(String payId, List<Payment>payments, Address changeAddress, String password) {
+
+		if (null == payments || payments.size() < 1) {
+			log.error("Need at least one payment address/amount item");
+			return null;
+		}
+		Iterator<Payment> paymentIterator = payments.iterator();
+
+                Wallet wallet = walletAppkit.wallet();
 		try {
-			Coin bitmarkFee = Coin.valueOf(BITMARK_FEE);
-			log.info("Sending {} satoshis to {}", BITMARK_FEE, forwardingAddress);
-			SendRequest sendRequest = SendRequest.to(forwardingAddress, bitmarkFee);
-			// Set the default fee
-			sendRequest.feePerKb = Coin.valueOf(MINE_FEE);
-			sendRequest.tx.addOutput(Coin.valueOf(0), generateBitmarkScript(txId));
+			if (!paymentIterator.hasNext()) {
+				log.error("Need at least one payment address/amount item");
+				return null;
+			}
+			Payment item = paymentIterator.next();
+
+			log.info("Sending {} satoshis to {}", item.amountSatoshi, item.paymentAddress);
+			SendRequest sendRequest = SendRequest.to(item.paymentAddress, item.amountSatoshi);
+
+			while (paymentIterator.hasNext()) {
+				item = paymentIterator.next();
+				log.info("Sending {} satoshis to {}", item.amountSatoshi, item.paymentAddress);
+				sendRequest.tx.addOutput(item.amountSatoshi, item.paymentAddress);
+                        }
+
+                        // Create the OP_Return
+                        sendRequest.tx.addOutput(Coin.valueOf(0), generateBitmarkScript(payId));
+
+                        // Set the default fee
+			sendRequest.feePerKb = MINE_FEE;
+
 			if (changeAddress != null) {
 				sendRequest.changeAddress = changeAddress;
 			}
@@ -194,17 +245,20 @@ public class BitmarkWalletKit {
 			if (password != null) {
 				sendRequest.aesKey = wallet.getKeyCrypter().deriveKey(password);
 			}
+
+                        // Perform the transfer
 			Wallet.SendResult sendResult = wallet.sendCoins(sendRequest);
 
 			sendResult.broadcastComplete.addListener(new Runnable() {
 				public void run() {
-					log.info("Sent to {} success! Transaction hash: {}", forwardingAddress,
-							sendResult.tx.getHashAsString());
+					log.info("Send for: {}  success: TxId: {}",
+						 payId,
+						 sendResult.tx.getHashAsString());
 					log.info("Change address: " + sendRequest.changeAddress);
 					log.info("Wallet balance (estimated satoshi): {}",
-							wallet.getBalance(BalanceType.ESTIMATED_SPENDABLE));
+						 wallet.getBalance(BalanceType.ESTIMATED_SPENDABLE));
 					log.info("Wallet balance (available satoshi): {}",
-							wallet.getBalance(BalanceType.AVAILABLE_SPENDABLE));
+						 wallet.getBalance(BalanceType.AVAILABLE_SPENDABLE));
 				}
 			}, MoreExecutors.directExecutor());
 
@@ -212,25 +266,24 @@ public class BitmarkWalletKit {
 			try {
 				sendResult.broadcastComplete.get();
 			} catch (InterruptedException | ExecutionException e) {
-				log.error(
-						"Broadcast {} to peers failed and tx has been commit to wallet. Please try to re-broadcast the tx: {}",
-						sendResult.tx.getHashAsString());
-				return false;
+				log.error("Broadcast {} to peers failed and tx has been commit to wallet. Please try to re-broadcast the tx: {}",
+					  sendResult.tx.getHashAsString());
+				return null;
 			}
-			return true;
+			return sendResult.tx.getHashAsString();
 		} catch (KeyCrypterException | InsufficientMoneyException e) {
-			log.error("Sent to {} failled: {}", forwardingAddress, e);
-			return false;
+			log.error("Send for: {}  error: {}", payId, e);
+			return null;
 		}
 	}
 
-	private Script generateBitmarkScript(String txId) {
-		if (!checkHex(txId)) {
-			log.error("Txid is not hex string: {}", txId);
+	private Script generateBitmarkScript(String payId) {
+		if (!checkHex(payId)) {
+			log.error("PayId is not hex string: {}", payId);
 			return null;
 		}
-		int countTxId = txId.length() / 2;
-		String scriptStr = "6a" + Integer.toHexString(countTxId) + txId;
+		int countPayId = payId.length() / 2;
+		String scriptStr = "6a" + Integer.toHexString(countPayId) + payId;
 		byte[] bytes = new BigInteger(scriptStr, 16).toByteArray();
 		return new Script(bytes);
 	}
@@ -246,7 +299,7 @@ public class BitmarkWalletKit {
 	 * <p>
 	 * The prefix file name for the wallet and block chain
 	 * </p>
-	 * 
+	 *
 	 * @return prefix name
 	 */
 	public String getBitmarkWalletFileName() {
@@ -257,7 +310,7 @@ public class BitmarkWalletKit {
 	 * <p>
 	 * Check if the wallet is encrypted.
 	 * </p>
-	 * 
+	 *
 	 * @param wallet
 	 * @return true if encrypted
 	 */
@@ -273,7 +326,7 @@ public class BitmarkWalletKit {
 	 * <p>
 	 * Create a system console to let the user type password.
 	 * </p>
-	 * 
+	 *
 	 * @param msg
 	 *            Message would like to show in the console
 	 * @return password string

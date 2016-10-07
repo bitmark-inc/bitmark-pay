@@ -1,0 +1,33 @@
+---
+configuration:
+  status: error
+  properties:
+    property:
+      - name: logDirectory
+        value: "$${main:logdir}/$${main:prefix}"
+      - name: rollingFileName
+        value: "bitmark-pay.log"
+
+  appenders:
+    Console:
+      - name: STDOUT
+        PatternLayout:
+          pattern: "%highlight{%d{yyyy-MM-dd'T'HH:mm:ssZ} %p %c [%t] %m%n}{FATAL=red, ERROR=red, WARN=blue, INFO=green, DEBUG=white, TRACE=blue}"
+
+    RollingRandomAccessFile:
+      - name: RollingFiles
+        fileName: "${logDirectory}/${rollingFileName}"
+        filePattern: "${logDirectory}/${rollingFileName}.%i"
+        Policies:
+          SizeBasedTriggeringPolicy:
+            size: "2 MB"
+        PatternLayout:
+          pattern: "%d{yyyy-MM-dd'T'HH:mm:ssZ} %p %c [%t] %m%n"
+        DefaultRolloverStrategy:
+          max: 20
+
+  loggers:
+    root:
+      level: info
+      AppenderRef:
+       - ref: RollingFiles

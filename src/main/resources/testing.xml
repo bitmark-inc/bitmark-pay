@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+	<bitcoin>
+		<peers>
+			<ip port="17002">172.16.23.244</ip>
+			<ip port="17002">172.16.23.245</ip>
+		</peers>
+	</bitcoin>
+</configuration>

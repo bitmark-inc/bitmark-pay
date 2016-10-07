@@ -1,9 +1,9 @@
 package bitmark.com.json;
 
 public class AddressJsonResponse {
-	private String Address;
+	private String address;
 
 	public AddressJsonResponse(String address) {
-		this.Address = address;
+		this.address = address;
 	}
 }

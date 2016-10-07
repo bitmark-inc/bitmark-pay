@@ -1,14 +1,13 @@
-# The default files are in:
-#   included in jar from:   src/main/resources/log4j2.yaml
-#   during testing from:    src/test/resources/log4j2-test.yaml
-#
-
 ---
 configuration:
+  status: error
   properties:
     property:
-      name: rollingFileName
-      value: log/bitmarkPay.log
+      - name: logDirectory
+        value: "./log"
+      - name: rollingFileName
+        value: "testing.log"
+
 
   appenders:
     Console:
@@ -18,11 +17,11 @@ configuration:
 
     RollingRandomAccessFile:
       name: RollingFiles
-      fileName: "${rollingFileName}"
-      filePattern: "${rollingFileName}.%i"
+      fileName: "${logDirectory}/${rollingFileName}"
+      filePattern: "${logDirectory}/${rollingFileName}.%i"
       Policies:
         SizeBasedTriggeringPolicy:
-            size: "10 MB"
+          size: "1 MB"
       PatternLayout:
         pattern: "%d{yyyy-MM-dd'T'HH:mm:ssZ} %p %c [%t] %m%n"
       DefaultRolloverStrategy:

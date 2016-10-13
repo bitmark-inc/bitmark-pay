@@ -4,7 +4,7 @@
 
 	<groupId>bitmark.com</groupId>
 	<artifactId>bitmarkPayService</artifactId>
-	<version>2.0-SNAPSHOT</version>
+	<version>3.x-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>payService</name>

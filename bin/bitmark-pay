@@ -1,0 +1,114 @@
+#!/bin/sh
+# run the payment process
+
+ERROR()
+{
+  echo error: $*
+  exit 1
+}
+
+USAGE()
+{
+  [ -z "$1" ] || echo error: $*
+  echo usage: $(basename "$0") '<options> <pay_id> <address> <amount> {<address> <amount>}...'
+  echo '       --help           -h         this message'
+  echo '       --verbose        -v         more messages'
+  echo '       --network=NET    -n NET     set the network ['"${network}"']'
+  echo '       --debug          -d         show debug information'
+  exit 1
+}
+
+# check network
+set_network()
+{
+  case "$1" in
+    (test|testing)
+      network=testing
+      ;;
+    (dev|devnet|devel|development)
+      network=development
+      ;;
+    (*)
+      USAGE "invalid network name: $1"
+      ;;
+  esac
+}
+
+make_payment()
+{
+  java ${java_options} -jar "${application}" ${json} --config-dir="${config_dir}" --net="${network}" pay "$@"
+}
+
+account_info()
+{
+  java ${java_options} -jar "${application}" ${json} --config-dir="${config_dir}" --net="${network}" info
+}
+
+
+# main program
+
+verbose=no
+frame=yes
+network=testing
+#java_options='-Dlog4j.configurationFile=log4j2.yaml'
+java_options=
+json=
+application=%%BITMARK_PAY_JAR%%
+
+getopt=/usr/local/bin/getopt
+[ -x "${getopt}" ] || getopt=getopt
+args=$(${getopt} -o hvn:jd --long=help,verbose,network:,json,debug -- "$@") ||exit 1
+
+# replace the arguments with the parsed values
+eval set -- "${args}"
+
+while :
+do
+  case "$1" in
+    (-v|--verbose)
+      verbose=yes
+      ;;
+
+    (-n|--network)
+      set_network "$2"
+      shift
+      ;;
+
+    (-j|--json)
+      json='--json'
+      ;;
+
+    (-d|--debug)
+      debug=yes
+      ;;
+
+    (--)
+      shift
+      break
+      ;;
+
+    (*)
+      USAGE invalid argument $1
+      ;;
+  esac
+  shift
+done
+
+[ X"${debug}" = X"yes" ] && set -x
+
+config_dir="bitmark-pay"
+[ -d "${config_dir}" ] || ERROR "missing configuration: ${config_dir}"
+
+# no arguments, just display info
+if [ $# -eq 0 ]
+then
+  account_info
+  return 0
+fi
+
+[ $# -lt 3 ] && USAGE 'insufficient arguments'
+
+pay_id="$1"; shift
+[ $(( $# % 2 )) -ne 0 ] && USAGE 'incorrect account/amount paring'
+
+make_payment "${pay_id}" "$@"

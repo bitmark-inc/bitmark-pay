@@ -117,6 +117,9 @@ public class BitmarkWalletKit {
 		case TESTING:
 			netParams = BitmarkRegTestParams.get();
 			break;
+		case LOCAL:
+			netParams = BitmarkRegTestParams.get();
+			break;
 		case LOCAL_BITCOIN_TESTNET:
 			netParams = TestNet3Params.get();
 			break;

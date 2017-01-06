@@ -7,3 +7,4 @@ target
 log
 config/*
 local-maven-repository
+*.tar.gz

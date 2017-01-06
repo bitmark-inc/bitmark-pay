@@ -23,10 +23,17 @@ USAGE()
 set_network()
 {
   case "$1" in
-    (test|testing)
+    (bitmark|live|production)
+      network=bitmark
+      ;;
+    (test|testing|testnet)
       network=testing
       ;;
     (dev|devnet|devel|development)
+      network=development
+      ;;
+    (local)
+      # local also uses the development bitcoin chain
       network=development
       ;;
     (*)

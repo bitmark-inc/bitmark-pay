@@ -2,8 +2,7 @@
 <configuration>
   <bitcoin>
     <peers>
-      <ip port="17002">118.163.120.178</ip>
-      <ip port="17002">118.163.122.207</ip>
+      <ip port="17002">127.0.0.1</ip>
     </peers>
   </bitcoin>
 </configuration>

@@ -34,7 +34,7 @@ set_network()
       ;;
     (local)
       # local also uses the development bitcoin chain
-      network=development
+      network=local
       ;;
     (*)
       USAGE "invalid network name: $1"

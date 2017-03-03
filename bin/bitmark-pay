@@ -70,8 +70,12 @@ then
   mkdir -p -m 0700 "${config_dir}"
 fi
 
-getopt=/usr/local/bin/getopt
-[ -x "${getopt}" ] || getopt=getopt
+getopt=
+for g in /usr/local/bin/getopt /usr/local/opt/gnu-getopt/bin/getopt /usr/bin/getopt
+do
+  [ -x "${g}" ] && getopt="${g}" && break
+done
+[ -x "${getopt}" ] || ERROR 'no suitable getopt was found'
 args=$(${getopt} -o hvn:c:jd --long=help,verbose,network:,config-dir:,json,debug -- "$@") ||exit 1
 
 # replace the arguments with the parsed values
@@ -91,7 +95,7 @@ do
 
     (-c|--config-dir)
       config_dir="$2"
-      [ -z "${config_dir}" ] || USAGE "empty --config-dir option"
+      [ -z "${config_dir}" ] && USAGE "empty --config-dir option"
       [ -d "${config_dir}" ] || USAGE "directory does not exist for: --config-dir=$2"
       shift
       ;;

@@ -3,71 +3,92 @@
 
 ERROR()
 {
-  echo error: $*
+  printf 'error: '
+  printf "$@"
+  printf '\n'
   exit 1
+}
+
+VERBOSE()
+{
+  [ X"${verbose}" = X"yes" ] || return
+  printf "$@"
+  printf '\n'
 }
 
 USAGE()
 {
-  [ -z "$1" ] || echo error: $*
+  if [ -n "$1" ]
+  then
+    printf 'error: '
+    printf "$@"
+    printf '\n'
+  fi
   echo usage: $(basename "$0") '<options> <pay_id> <address> <amount> {<address> <amount>}...'
   echo '       --help           -h         this message'
   echo '       --verbose        -v         more messages'
   echo '       --network=NET    -n NET     set the network ['"${network}"']'
   echo '       --config-dir=DIR -c DIR     set the config directory ['"${config_dir}"']'
-  echo '       --debug          -d         show debug information'
+  echo '       --raw            -r         just pass raw arguments to java'
+  echo '       --debug          -D         show debug information'
   exit 1
 }
 
-# check network
+# set network to vaules used in java application
 set_network()
 {
   case "$1" in
-    (bitmark|live|production)
+    (l|live|livenet|b|bitmark)
       network=bitmark
       ;;
-    (test|testing|testnet)
+    (t|test|testnet)
       network=testing
       ;;
-    (dev|devnet|devel|development)
+    (d|devel|develnet)
       network=development
       ;;
     (local)
-      # local also uses the development bitcoin chain
       network=local
       ;;
     (*)
-      USAGE "invalid network name: $1"
+      USAGE 'invalid network name: "%s"' "$1"
       ;;
   esac
 }
 
-make_payment()
+run_java_program()
 {
-  java ${java_options} -jar "${application}" ${json} --config-dir="${config_dir}" --net="${network}" pay "$@"
+  java ${java_options} -jar "${application}" ${json} --config-dir="${config_dir}" --net="${network}" "$@"
 }
 
 account_info()
 {
-  java ${java_options} -jar "${application}" ${json} --config-dir="${config_dir}" --net="${network}" info
+  run_java_program info
 }
+
+make_payment()
+{
+  run_java_program pay "$@"
+}
+
 
 
 # main program
 
 verbose=no
 frame=yes
-network=testing
+set_network local
 #java_options='-Dlog4j.configurationFile=log4j2.yaml'
 java_options=
+raw=no
 json=
 application=%%BITMARK_PAY_JAR%%
 config_dir=
 
+# default config directory
 if [ -n "${XDG_CONFIG_HOME}" -a -d "${XDG_CONFIG_HOME}" ]
 then
   config_dir="${XDG_CONFIG_HOME}/bitmark-pay"
-  mkdir -p -m 0700 "${config_dir}"
 fi
 
 getopt=
@@ -76,7 +97,7 @@ do
   [ -x "${g}" ] && getopt="${g}" && break
 done
 [ -x "${getopt}" ] || ERROR 'no suitable getopt was found'
-args=$(${getopt} -o hvn:c:jd --long=help,verbose,network:,config-dir:,json,debug -- "$@") ||exit 1
+args=$(${getopt} -o hvn:c:rjD --long=help,verbose,network:,config-dir:,raw,json,debug -- "$@") ||exit 1
 
 # replace the arguments with the parsed values
 eval set -- "${args}"
@@ -95,16 +116,20 @@ do
 
     (-c|--config-dir)
       config_dir="$2"
-      [ -z "${config_dir}" ] && USAGE "empty --config-dir option"
-      [ -d "${config_dir}" ] || USAGE "directory does not exist for: --config-dir=$2"
+      [ -z "${config_dir}" ] && USAGE 'empty --config-dir option'
+      [ -d "${config_dir}" ] || USAGE 'directory does not exist for: --config-dir="%s"' "$2"
       shift
+      ;;
+
+    (-r|-raw)
+      raw=yes
       ;;
 
     (-j|--json)
       json='--json'
       ;;
 
-    (-d|--debug)
+    (-D|--debug)
       debug=yes
       ;;
 
@@ -118,7 +143,7 @@ do
       ;;
 
     (*)
-      USAGE "invalid argument: $1"
+      USAGE 'invalid argument: "%s"' "$1"
       ;;
   esac
   shift
@@ -126,14 +151,18 @@ done
 
 [ X"${debug}" = X"yes" ] && set -x
 
-[ -z "${config_dir}" ] && ERROR "configuration directory cannot be blank"
-[ -d "${config_dir}" ] || ERROR "missing configuration directory: ${config_dir}"
+[ -z "${config_dir}" ] && ERROR 'configuration directory cannot be blank'
+###mkdir -p -m 0700 "${config_dir}"
+[ -d "${config_dir}" ] || ERROR 'missing configuration directory: "%s"' "${config_dir}"
 
 # no arguments, just display info
 if [ $# -eq 0 ]
 then
   account_info
-  return 0
+  exit 0
+elif [ X"${raw}" = X"yes" ]
+then
+  run_java_program "$@"
 fi
 
 [ $# -lt 3 ] && USAGE 'insufficient arguments'

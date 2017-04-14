@@ -41,10 +41,10 @@ set_network()
     (l|live|livenet|b|bitmark)
       network=bitmark
       ;;
-    (t|test|testnet)
+    (t|test|testing|testnet)
       network=testing
       ;;
-    (d|devel|develnet)
+    (d|devel|develnet|development)
       network=development
       ;;
     (local)

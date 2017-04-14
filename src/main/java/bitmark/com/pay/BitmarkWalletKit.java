@@ -78,9 +78,12 @@ public class BitmarkWalletKit {
 	private static final Logger log = LoggerFactory.getLogger(BitmarkWalletKit.class);
 
 	/**
-	 * Fee charged by other bitcoin peer to mine the transaction
+	 * <p>
+	 * from org.bitcoinj.core.Transaction as of 2017-03-01
+	 * to override the current value which is yet to be updated
+	 * <p>
 	 */
-	public static final Coin MINE_FEE = Coin.valueOf(5000L);
+	public static final Coin DEFAULT_TX_FEE = Coin.valueOf(100000); // 1 mBTC
 
 	private String bitmarkWalletFileName;
 	private String walletFolder;
@@ -239,7 +242,11 @@ public class BitmarkWalletKit {
                         sendRequest.tx.addOutput(Coin.valueOf(0), generateBitmarkScript(payId));
 
                         // Set the default fee
-			sendRequest.feePerKb = MINE_FEE;
+			sendRequest.feePerKb = Transaction.DEFAULT_TX_FEE;
+			if (sendRequest.feePerKb.getValue() < DEFAULT_TX_FEE.getValue()) {
+				sendRequest.feePerKb = DEFAULT_TX_FEE;
+			}
+			log.info("Set fee per kB {}", sendRequest.feePerKb);
 
 			if (changeAddress != null) {
 				sendRequest.changeAddress = changeAddress;

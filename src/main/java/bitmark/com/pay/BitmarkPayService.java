@@ -306,7 +306,7 @@ public class BitmarkPayService {
 			}
 			String txId = bitmarkWalletKit.sendCoins(payId, payments, null, password);
 			if (null == txId) {
-				needSatoshi.add(BitmarkWalletKit.MINE_FEE);
+				needSatoshi.add(Transaction.DEFAULT_TX_FEE);
 				System.err.printf("Payment failed, you need at least %d satoshi and wallet balance is %d\n",
 						  needSatoshi.value,
 						  kit.wallet().getBalance(BalanceType.AVAILABLE_SPENDABLE).value);

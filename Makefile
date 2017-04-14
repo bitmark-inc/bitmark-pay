@@ -11,7 +11,7 @@ DIST_PREFIX = bitmark-pay-${VERSION}/
 
 PORTS_DIST_DIR = /usr/ports/distfiles/bitmark
 
-MVN = mvn -Dmaven.repo.local="${LOCAL_REPOSITORY}/m2"
+MVN = mvn -Dmaven.repo.local="${LOCAL_REPOSITORY}/m2" versions:use-latest-versions
 RM = rm -f
 CP = cp -p
 TAR = tar

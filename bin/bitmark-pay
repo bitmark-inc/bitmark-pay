@@ -25,12 +25,12 @@ USAGE()
     printf '\n'
   fi
   echo usage: $(basename "$0") '<options> <pay_id> <address> <amount> {<address> <amount>}...'
-  echo '       --help           -h         this message'
-  echo '       --verbose        -v         more messages'
-  echo '       --network=NET    -n NET     set the network ['"${network}"']'
-  echo '       --config-dir=DIR -c DIR     set the config directory ['"${config_dir}"']'
-  echo '       --raw            -r         just pass raw arguments to java'
-  echo '       --debug          -D         show debug information'
+  echo '       --help             -h            this message'
+  echo '       --verbose          -v            more messages'
+  echo '       --network=NET      -n NET        set the network ['"${network}"']'
+  echo '       --config-dir=DIR   -c DIR        set the config directory ['"${config_dir}"']'
+  echo '       --raw              -r            just pass raw arguments to java'
+  echo '       --debug            -D            show debug information'
   exit 1
 }
 

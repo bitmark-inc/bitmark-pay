@@ -11,7 +11,8 @@ DIST_PREFIX = bitmark-pay-${VERSION}/
 
 PORTS_DIST_DIR = /usr/ports/distfiles/bitmark
 
-MVN = mvn -Dmaven.repo.local="${LOCAL_REPOSITORY}/m2" versions:use-latest-versions
+MAVEN_OPTS = -Xmx1024m -Xms512m -Xss8m
+MVN = mvn -Dmaven.repo.local="${LOCAL_REPOSITORY}/m2" -DskipTests=true versions:use-latest-versions
 RM = rm -f
 CP = cp -p
 TAR = tar
@@ -29,7 +30,7 @@ all:
 create-maven-repository:
 	${RM} -r '${LOCAL_REPOSITORY}/m2'
 	${RM} '${ARCHIVE_FILE}'
-	${MVN} clean verify
+	env MAVEN_OPTS="${MAVEN_OPTS}" ${MVN} clean verify
 	${TAR} -czf '${ARCHIVE_FILE}' -C '${LOCAL_REPOSITORY}' m2
 
 # create a git archive file for current HEAD/version
